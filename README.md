@@ -36,14 +36,18 @@ Then edit `qa-apps/synergy-qmp.json` with the real develop URL and repo path.
 # Feature run (scenario 2): base cases, cap 5
 pnpm qa --app synergy-qmp --scenario feature --feature <branch> --max 5
 
-# Whole-codebase run (scenario 1)
+# Entire-branch run (scenario 1)
 pnpm qa --app synergy-qmp --scenario codebase --max 10
 
 # Run a run's generated specs directly
 QA_APP=synergy-qmp QA_RUN_DIR=runs/<run id> pnpm pw
 
 pnpm dev                    # dashboard on localhost:3000
+pnpm db:seed                # demo runs (app "Demo app") to browse; re-run to reset
 ```
+
+Starting a run from the dashboard queues it and launches the runner in the
+background (`pnpm qa --run <id>`), logging to `runs/<run id>/runner.log`.
 
 ## Layout
 
@@ -51,7 +55,10 @@ pnpm dev                    # dashboard on localhost:3000
 |---|---|
 | `qa-apps/<slug>.json` | Per-app config: base URL, repo, roles. No secrets; roles name env vars. |
 | `src/db/schema.ts` | Tables: `apps`, `runs`, `test_cases`, `artifacts` |
-| `src/lib/` | Config and plan schemas (Zod) |
+| `src/app/` | Dashboard: projects (side nav), runs as a tree per project (`/projects/<slug>`), run and test detail, new run; `/artifacts/<id>` serves videos, screenshots, traces |
+| `src/lib/` | Config and plan schemas (Zod), run queries, runner launcher; pure helpers in `helpers.ts` |
+| `src/types/` | All named types: `shared.types.ts`, `dashboard.types.ts`, `runner.types.ts` |
+| `src/db/seed.ts` | Demo data with real Playwright screenshots, videos and traces |
 | `src/runner/cli.ts` | Run orchestrator: prepare → plan → write → run → repair → save |
 | `src/runner/claude.ts` | `claude -p` wrapper |
 | `playwright/auth.setup.ts` | Signs in once per role, saves to `.auth/<slug>/<role>.json` |

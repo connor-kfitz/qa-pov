@@ -18,7 +18,3 @@ export const repairVerdictSchema = z.object({
   notes: z.string(),
   fixed: z.boolean()
 });
-
-export type PlannedCase = z.infer<typeof plannedCaseSchema>;
-export type TestPlan = z.infer<typeof testPlanSchema>;
-export type RepairVerdict = z.infer<typeof repairVerdictSchema>;

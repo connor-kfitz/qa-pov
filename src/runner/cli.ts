@@ -6,10 +6,14 @@ import { mkdir } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { loadAppConfig, type AppConfig } from "@/lib/app-config";
+import { upsertApp } from "@/db/apps";
+import { loadAppConfig } from "@/lib/app-config";
+import { todo } from "@/lib/helpers";
+import type { Depth, Run, RunStatus, Scenario } from "@/types/shared.types";
 
 const { values } = parseArgs({
   options: {
+    run: { type: "string" },
     app: { type: "string" },
     scenario: { type: "string", default: "feature" },
     depth: { type: "string", default: "base" },
@@ -19,11 +23,12 @@ const { values } = parseArgs({
   }
 });
 
-type Scenario = (typeof schema.scenarioEnum.enumValues)[number];
-type Depth = (typeof schema.depthEnum.enumValues)[number];
-type RunStatus = (typeof schema.runStatusEnum.enumValues)[number];
-
 async function main() {
+  const run = values.run ? await claimRun(values.run) : await createRun();
+  await execute(run);
+}
+
+async function createRun() {
   if (!values.app) throw new Error("--app is required");
   const scenario = values.scenario as Scenario;
   const depth = values.depth as Depth;
@@ -45,10 +50,20 @@ async function main() {
       featureRef: values.feature ?? null
     })
     .returning();
+  return run;
+}
 
+async function claimRun(id: string) {
+  const [run] = await db.select().from(schema.runs).where(eq(schema.runs.id, id));
+  if (!run) throw new Error(`Run ${id} not found`);
+  if (run.status !== "queued") throw new Error(`Run ${id} is ${run.status}, not queued`);
+  return run;
+}
+
+async function execute(run: Run) {
   const runDir = path.resolve("runs", run.id);
   await mkdir(path.join(runDir, "tests"), { recursive: true });
-  console.log(`Run ${run.id} created (${scenario}, ${depth}) → ${runDir}`);
+  console.log(`Run ${run.id} started (${run.scenario}, ${run.depth}) → ${runDir}`);
 
   const setStatus = (status: RunStatus, error?: string) => db.update(schema.runs).set({ status, error: error ?? null }).where(eq(schema.runs.id, run.id));
 
@@ -65,30 +80,18 @@ async function main() {
 
   for (const [status, step] of steps) {
     await setStatus(status);
+    console.log(`${new Date().toISOString()} ${status}`);
     try {
       await step();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await setStatus("failed", `${status}: ${message}`);
+      await db.update(schema.runs).set({ status: "failed", error: `${status}: ${message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
       throw err;
     }
   }
 
   await db.update(schema.runs).set({ status: "done", finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
   console.log(`Run ${run.id} done`);
-}
-
-async function upsertApp(app: AppConfig) {
-  const [row] = await db
-    .insert(schema.apps)
-    .values({ slug: app.slug, name: app.name, baseUrl: app.baseUrl, repoPath: app.repoPath })
-    .onConflictDoUpdate({ target: schema.apps.slug, set: { name: app.name, baseUrl: app.baseUrl, repoPath: app.repoPath } })
-    .returning();
-  return row;
-}
-
-function todo(what: string): never {
-  throw new Error(`not implemented yet: ${what}`);
 }
 
 main()

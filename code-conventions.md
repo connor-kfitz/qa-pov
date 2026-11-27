@@ -2,6 +2,49 @@
 
 Applies to all TypeScript in this repo.
 
+## Where code goes
+
+### Types live in `src/types/`
+
+Every named `type` and `interface` goes in a `*.types.ts` file under `src/types/`,
+never in the component, module or script that uses it. Import them with `import type`.
+
+| File | What goes in it |
+|---|---|
+| `shared.types.ts` | Domain types used by both the dashboard and the runner: DB row types and enums (from `src/db/schema.ts`), app config (from the Zod schema in `src/lib/app-config.ts`) |
+| `dashboard.types.ts` | Dashboard types: component props, form state, view models (`Project`, `ProjectRun`), seed data |
+| `runner.types.ts` | Runner types: Claude call options/results, test plan and repair verdict |
+
+Add to an existing file first. Only start a new `*.types.ts` file when a new area
+has enough types that none of the above fits (e.g. a mobile runner).
+
+Types derived from a value (Drizzle tables, Zod schemas) still live here; import the
+value with `import type` and derive with `typeof`:
+
+```ts
+import type { z } from "zod";
+import type { appConfigSchema } from "@/lib/app-config";
+
+export type AppConfig = z.infer<typeof appConfigSchema>;
+```
+
+A small inline annotation in a function signature (e.g. `{ run: Run }` as a
+component's props) can stay inline; once it needs a name, it moves to `src/types/`.
+
+### Helpers live in `src/lib/helpers.ts`
+
+Pure helper functions (formatting, labels, slugs, status and grouping logic, parsing)
+go in `src/lib/helpers.ts`, not in the component or page that uses them. Constants
+those helpers need (e.g. `runSteps`) live there too.
+
+`helpers.ts` is imported by client components, so keep it pure and browser-safe:
+no Node built-ins (`fs`, `path`, `child_process`), no database client, no React/JSX.
+A helper returns data (e.g. a string); the component wraps it in markup.
+
+Code that does IO stays in its own module under `src/lib/` (or `src/db/`): DB queries
+(`runs.ts`, `projects.ts`), files and paths (`run-files.ts`, `app-config.ts`), git
+(`git.ts`), spawning the runner (`launch-runner.ts`).
+
 ## No semicolons after `}`
 
 Omit the semicolon only when it would immediately follow a closing curly brace —

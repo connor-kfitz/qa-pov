@@ -1,10 +1,11 @@
 import path from "node:path";
 
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
+import type { AppConfig } from "@/types/shared.types";
 
-const roleSchema = z.union([
+export const roleSchema = z.union([
   z.object({ skip: z.literal(true) }),
   z.object({
     loginUrl: z.string(),
@@ -18,13 +19,11 @@ export const appConfigSchema = z.object({
   slug: z.string(),
   name: z.string(),
   baseUrl: z.url(),
+  repoUrl: z.url().optional(),
   repoPath: z.string(),
   compareBranch: z.string().default("develop"),
   roles: z.record(z.string(), roleSchema)
 });
-
-export type AppConfig = z.infer<typeof appConfigSchema>;
-export type RoleConfig = z.infer<typeof roleSchema>;
 
 export const appsDir = path.resolve(process.cwd(), "qa-apps");
 
@@ -32,6 +31,16 @@ export async function loadAppConfig(slug: string): Promise<AppConfig> {
   const file = path.join(appsDir, `${slug}.json`);
   const raw = JSON.parse(await readFile(file, "utf8"));
   return appConfigSchema.parse(raw);
+}
+
+export async function listAppConfigs(): Promise<AppConfig[]> {
+  const files = (await readdir(appsDir)).filter((file) => file.endsWith(".json"));
+  return Promise.all(files.map((file) => loadAppConfig(path.basename(file, ".json"))));
+}
+
+export async function saveNewAppConfig(config: AppConfig) {
+  const file = path.join(appsDir, `${config.slug}.json`);
+  await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, { flag: "wx" });
 }
 
 export function loadAppConfigSync(slug: string): AppConfig {

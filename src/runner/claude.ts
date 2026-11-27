@@ -1,18 +1,7 @@
 import path from "node:path";
 
 import { spawn } from "node:child_process";
-
-export interface ClaudeOptions {
-  cwd?: string;
-  withBrowser?: boolean;
-  allowedTools?: string[];
-}
-
-export interface ClaudeResult {
-  text: string;
-  costUsd?: number;
-  durationMs?: number;
-}
+import type { ClaudeOptions, ClaudeResult } from "@/types/runner.types";
 
 export function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResult> {
   const args = ["-p", "--output-format", "json"];
@@ -38,12 +27,4 @@ export function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<Cla
     });
     child.stdin.end(prompt);
   });
-}
-
-export function extractJson(text: string): unknown {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = fenced ? fenced[1] : text;
-  const start = body.search(/[[{]/);
-  if (start === -1) throw new Error("No JSON found in Claude's answer");
-  return JSON.parse(body.slice(start));
 }
