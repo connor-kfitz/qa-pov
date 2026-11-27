@@ -1,4 +1,5 @@
 import { caseStatusEnum } from "@/db/schema";
+import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
 import type { ProjectRun, RunGroup, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
@@ -220,6 +221,19 @@ export function flattenReport(report: PlaywrightReport): ReportedTest[] {
     ...(suite.suites ?? []).flatMap(walk)
   ];
   return report.suites.flatMap(walk);
+}
+
+export function toPosix(file: string) {
+  return file.split(/[\/]/).join("/");
+}
+
+export function parseAnswer<T>(answer: string, answerSchema: ZodType<T>): T | null {
+  try {
+    const parsed = answerSchema.safeParse(extractJson(answer));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
 export function todo(what: string): never {

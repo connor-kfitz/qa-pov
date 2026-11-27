@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { plannedCaseSchema, playwrightReportSchema, repairVerdictSchema, reportSpecSchema, testPlanSchema, writeReportSchema } from "@/lib/plan-schema";
+import type { plannedCaseSchema, playwrightReportSchema, repairReportSchema, repairVerdictSchema, reportSpecSchema, testPlanSchema, writeReportSchema } from "@/lib/plan-schema";
 import type { AppConfig, Run, Scenario } from "@/types/shared.types";
 
 export interface ClaudeOptions {
@@ -23,6 +23,7 @@ export type PlannedCase = z.infer<typeof plannedCaseSchema>;
 export type TestPlan = z.infer<typeof testPlanSchema>;
 export type RepairVerdict = z.infer<typeof repairVerdictSchema>;
 export type WriteReport = z.infer<typeof writeReportSchema>;
+export type RepairReport = z.infer<typeof repairReportSchema>;
 export type PlaywrightReport = z.infer<typeof playwrightReportSchema>;
 export type ReportSpec = z.infer<typeof reportSpecSchema>;
 
@@ -74,4 +75,9 @@ export interface SpecTarget {
   kind: string;
   steps: string[];
   expected: string;
+}
+
+export interface RepairTarget extends SpecTarget {
+  error: string;
+  evidence: string[];
 }

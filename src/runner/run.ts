@@ -37,18 +37,18 @@ export async function runTests({ run, app, runDir }: StepInput) {
     const status = result?.status ?? "skipped";
     counts[status] = (counts[status] ?? 0) + 1;
 
-    const baseNotes = (testCase.notes ?? "").split("\n\nFailure:")[0];
+    const baseNotes = (testCase.notes ?? "").split(/\n\n(?:Failure|Repair):/)[0];
     const failure = result?.error ? `\n\nFailure: ${truncate(result.error, maxErrorChars).text}` : "";
     const notes = result ? `${baseNotes}${status === "passed" ? "" : failure}` : `${baseNotes}\n\nFailure: Playwright didn't run this test.`;
 
-    await db.update(schema.testCases).set({ status, durationMs: result ? Math.round(result.durationMs) : null, notes: notes.trim() || null }).where(eq(schema.testCases.id, testCase.id));
+    await db.update(schema.testCases).set({ status, verdict: null, durationMs: result ? Math.round(result.durationMs) : null, notes: notes.trim() || null }).where(eq(schema.testCases.id, testCase.id));
     await replaceArtifacts(run.id, testCase.id, result);
   }
 
   console.log(`Ran ${cases.length} tests: ${Object.entries(counts).map(([status, total]) => `${total} ${status}`).join(", ")}`);
 }
 
-async function replaceArtifacts(runId: string, testCaseId: string, result: ReportedTest | undefined) {
+export async function replaceArtifacts(runId: string, testCaseId: string, result: ReportedTest | undefined) {
   await db.delete(schema.artifacts).where(eq(schema.artifacts.testCaseId, testCaseId));
   const files = (result?.attachments ?? []).flatMap((attachment) => {
     const type = artifactTypes.find((name) => name === attachment.name);

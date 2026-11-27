@@ -4,16 +4,15 @@ import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { authStatePath } from "@/lib/app-config";
-import { extractJson, slugify } from "@/lib/helpers";
+import { parseAnswer, slugify } from "@/lib/helpers";
 import { writeReportSchema } from "@/lib/plan-schema";
 import { toRunRelativePath } from "@/lib/run-files";
 import { runClaude } from "@/runner/claude";
 import { runPlaywright } from "@/runner/playwright";
 import { buildWritePrompt } from "@/runner/prompts";
+import { fixtureImport, runnerEnv, sessionAllowedTools, sessionTools, verifyCommand, writeBrowserConfig } from "@/runner/session";
 import type { RunContext, SpecTarget, StepInput, WriteReport } from "@/types/runner.types";
 
-const mcpVersion = "0.0.86";
 const writeTimeoutMs = 30 * 60_000;
 
 export async function write({ run, app, runDir }: StepInput, context: RunContext | null) {
@@ -22,7 +21,7 @@ export async function write({ run, app, runDir }: StepInput, context: RunContext
   await rm(testsDir, { recursive: true, force: true });
   await mkdir(testsDir, { recursive: true });
   await mkdir(writeDir, { recursive: true });
-  const env = { QA_APP: app.slug, QA_RUN_DIR: runDir, QA_ROOT: process.cwd() }
+  const env = runnerEnv(app, runDir);
 
   if ((await runPlaywright(["test", "--project", "setup", "--reporter=line"], env)) !== 0) throw new Error("Signing in failed; see the log above");
 
@@ -39,24 +38,19 @@ export async function write({ run, app, runDir }: StepInput, context: RunContext
     expected: testCase.expected
   }));
 
-  const toPosix = (file: string) => file.split(path.sep).join("/");
-  const fixtureImport = toPosix(path.relative(testsDir, path.resolve("playwright", "fixtures")));
   const codeDir = context && existsSync(context.codeDir) ? context.codeDir : null;
 
   for (const role of [...new Set(targets.map((target) => target.role))]) {
     const group = targets.filter((target) => target.role === role);
-    const mcpConfig = path.join(writeDir, `mcp-${role}.json`);
-    await writeFile(mcpConfig, JSON.stringify(mcpServerConfig(authStatePath(app.slug, role), path.join(writeDir, `browser-${role}`)), null, 2));
-
-    const verifyCommand = `npx playwright test -c ${toPosix(path.resolve("playwright.config.ts"))} --project ${role} --no-deps --reporter=list`;
-    const prompt = buildWritePrompt(run, app, role, group, codeDir ? context : null, { fixtureImport, verifyCommand });
+    const mcpConfig = await writeBrowserConfig(writeDir, app, role);
+    const prompt = buildWritePrompt(run, app, role, group, codeDir ? context : null, { fixtureImport: fixtureImport(testsDir), verifyCommand: verifyCommand(role) });
     await writeFile(path.join(writeDir, `prompt-${role}.md`), prompt);
 
     console.log(`Writing ${group.length} ${role} tests`);
     const result = await runClaude(prompt, {
       cwd: testsDir,
-      tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
-      allowedTools: ["mcp__playwright", "Bash(npx playwright test:*)"],
+      tools: sessionTools,
+      allowedTools: sessionAllowedTools,
       permissionMode: "acceptEdits",
       addDirs: codeDir ? [codeDir] : [],
       mcpConfig,
@@ -66,27 +60,12 @@ export async function write({ run, app, runDir }: StepInput, context: RunContext
     await writeFile(path.join(writeDir, `answer-${role}.md`), result.text);
     console.log(`Wrote ${role} tests: ${Math.round((result.durationMs ?? 0) / 1000)}s, $${(result.costUsd ?? 0).toFixed(2)}`);
 
-    await recordWritten(group, testsDir, parseReport(result.text));
+    await recordWritten(group, testsDir, parseAnswer(result.text, writeReportSchema));
   }
 
   const specs = targets.filter((target) => existsSync(path.join(testsDir, target.file))).length;
   console.log(`${specs} of ${targets.length} cases have a test file`);
   if (specs === 0) throw new Error("Claude didn't write any test files");
-}
-
-function mcpServerConfig(storageState: string, outputDir: string) {
-  const args = ["-y", `@playwright/mcp@${mcpVersion}`, "--headless", "--isolated", "--storage-state", storageState, "--output-dir", outputDir];
-  const server = process.platform === "win32" ? { command: "cmd", args: ["/c", "npx", ...args] } : { command: "npx", args };
-  return { mcpServers: { playwright: server } }
-}
-
-function parseReport(answer: string): WriteReport | null {
-  try {
-    const parsed = writeReportSchema.safeParse(extractJson(answer));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
 }
 
 async function recordWritten(group: SpecTarget[], testsDir: string, report: WriteReport | null) {

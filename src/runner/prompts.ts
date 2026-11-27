@@ -1,5 +1,5 @@
 import { shortId, shortSha } from "@/lib/helpers";
-import type { RunContext, SpecTarget } from "@/types/runner.types";
+import type { RepairTarget, RunContext, SpecTarget } from "@/types/runner.types";
 import type { AppConfig, Run } from "@/types/shared.types";
 
 export function buildPlanPrompt(run: Run, app: AppConfig, context: RunContext, maxTests: number) {
@@ -139,5 +139,65 @@ export function buildWritePrompt(run: Run, app: AppConfig, role: string, targets
     `{"cases": [{"file": "${targets[0]?.file ?? "01-example.${role}.spec.ts"}", "status": "passed", "note": "One sentence: what the test checks, or why it fails."}]}`,
     "```",
     `"status" is the result of your last run of that file: "passed" or "failed".`
+  ].join("\n");
+}
+
+export function buildRepairPrompt(run: Run, app: AppConfig, role: string, targets: RepairTarget[], paths: { fixtureImport: string; verifyCommand: string }) {
+  const cases = targets.flatMap((target, i) => [
+    `### ${i + 1}. ${target.file}`,
+    ``,
+    `- Title: ${target.title}`,
+    `- Planned steps:`,
+    ...target.steps.map((step) => `    - ${step}`),
+    `- Expected (from the plan, not negotiable): ${target.expected}`,
+    `- Error from the failed run:`,
+    "```",
+    target.error,
+    "```",
+    target.evidence.length > 0 ? `- Evidence from the failure (read these): ${target.evidence.join(", ")}` : `- No screenshot or page snapshot was saved.`,
+    ``
+  ]);
+
+  return [
+    `Some Playwright tests for ${app.name} failed. Decide why each one failed, fix the ones where the test itself is wrong, and report a verdict for every one.`,
+    ``,
+    `## Setup`,
+    ``,
+    `- Live URL: ${app.baseUrl}. The tests run as the "${role}" role and are already signed in.`,
+    `- The test files are in the current directory. They import from "${paths.fixtureImport}"; keep that.`,
+    `- You have a Playwright browser (the playwright MCP tools) signed in as ${role}. Use it to see what the page really does.`,
+    ``,
+    `## Failed tests`,
+    ``,
+    ...cases,
+    `## Verdicts`,
+    ``,
+    `- bad_test: the test is wrong (a selector that doesn't match, timing, the wrong page or button) while the app does what the plan expects. Fix the test.`,
+    `- app_bug: the app doesn't do what the expected result says. Don't change the test.`,
+    `- env_problem: the environment failed (server errors, pages that don't load, a lost session, data the test didn't create getting in the way). Don't change the test.`,
+    ``,
+    `## Rules for fixes`,
+    ``,
+    `- Never weaken, loosen or delete an assertion about the expected result, and never change expected text to match what the app shows. If the app's behaviour differs from the plan, that's app_bug.`,
+    `- Keep every test.step and the cleanup in test.afterEach. Change only what's needed to make the test follow the planned steps correctly.`,
+    `- Locate elements with getByRole, getByLabel, getByText or getByTestId; no waitForTimeout.`,
+    `- After fixing a file, run it with exactly: ${paths.verifyCommand} <file name>`,
+    `- At most 2 fix attempts per test. If it still fails, report your best verdict with fixed false.`,
+    ``,
+    `## Safety rules (shared environment that sends real email)`,
+    ``,
+    `- Only do what the planned steps need in the browser. Don't click other buttons that save, send, publish or delete.`,
+    `- Never submit the contact form or trigger an email to anyone except the signed-in test user.`,
+    `- If you must create a user or record with an email address, use qa-${shortId(run.id)}-<n>@example.com.`,
+    `- Only change data that you or the tests created; delete anything you create while investigating.`,
+    `- Never read, print or write passwords, secrets or .env files.`,
+    ``,
+    `## Output`,
+    ``,
+    `Reply with only this JSON, one entry per failed test:`,
+    "```json",
+    `{"cases": [{"file": "${targets[0]?.file ?? "01-example.spec.ts"}", "verdict": "bad_test", "fixed": true, "notes": "One or two sentences: what went wrong and what you changed, or what the app does instead of the expected result."}]}`,
+    "```",
+    `"fixed" is true only if you changed the test and your last run of it passed.`
   ].join("\n");
 }

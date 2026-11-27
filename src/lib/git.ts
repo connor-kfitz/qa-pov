@@ -70,3 +70,10 @@ export async function isAncestor(repoPath: string, ancestor: string, descendant:
     () => false
   );
 }
+
+export async function diffFiles(before: string, after: string) {
+  return run("git", ["diff", "--no-index", "--", before, after]).then(
+    () => "",
+    (err: { stdout?: string }) => err.stdout ?? ""
+  );
+}

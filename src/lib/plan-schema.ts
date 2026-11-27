@@ -14,11 +14,13 @@ export const testPlanSchema = z.object({
 });
 
 export const repairVerdictSchema = z.object({
-  specPath: z.string(),
+  file: z.string(),
   verdict: z.enum(["app_bug", "bad_test", "env_problem"]),
   notes: z.string(),
   fixed: z.boolean()
 });
+
+export const repairReportSchema = z.object({ cases: z.array(repairVerdictSchema) });
 
 export const writeReportSchema = z.object({
   cases: z.array(
