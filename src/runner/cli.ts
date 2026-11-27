@@ -9,6 +9,9 @@ import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig } from "@/lib/app-config";
 import { todo } from "@/lib/helpers";
+import { plan } from "@/runner/plan";
+import { EnvProblemError, prepare } from "@/runner/prepare";
+import type { RunContext } from "@/types/runner.types";
 import type { Depth, Run, RunStatus, Scenario } from "@/types/shared.types";
 
 const { values } = parseArgs({
@@ -67,9 +70,15 @@ async function execute(run: Run) {
 
   const setStatus = (status: RunStatus, error?: string) => db.update(schema.runs).set({ status, error: error ?? null }).where(eq(schema.runs.id, run.id));
 
+  const [appRow] = await db.select().from(schema.apps).where(eq(schema.apps.id, run.appId));
+  const input = { run, app: await loadAppConfig(appRow.slug), runDir }
+  let context: RunContext | null = null;
+
   const steps: [RunStatus, () => Promise<void>][] = [
-    ["preparing", async () => todo("check env is up, record deployed commit, compute diff")],
-    ["planning", async () => todo("claude -p → test plan JSON, validate with testPlanSchema")],
+    ["preparing", async () => {
+      context = await prepare(input);
+    }],
+    ["planning", async () => plan(input, context!)],
     ["writing", async () => todo("claude -p + Playwright MCP → one spec per case in runs/<id>/tests")],
     ["running", async () => todo("npx playwright test with QA_APP and QA_RUN_DIR set")],
     ["repairing", async () => todo("one bounded repair pass on failures")],
@@ -85,7 +94,8 @@ async function execute(run: Run) {
       await step();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await db.update(schema.runs).set({ status: "failed", error: `${status}: ${message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
+      const finalStatus = err instanceof EnvProblemError ? "blocked" : "failed";
+      await db.update(schema.runs).set({ status: finalStatus, error: `${status}: ${message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
       throw err;
     }
   }

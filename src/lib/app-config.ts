@@ -49,6 +49,13 @@ export function loadAppConfigSync(slug: string): AppConfig {
   return appConfigSchema.parse(JSON.parse(readFileSync(file, "utf8")));
 }
 
+export function bypassSecret(app: AppConfig) {
+  if (!app.bypassSecretEnv) return null;
+  const secret = process.env[app.bypassSecretEnv];
+  if (!secret) throw new Error(`Set ${app.bypassSecretEnv} in .env`);
+  return secret;
+}
+
 export function authStatePath(slug: string, role: string): string {
   return path.resolve(process.cwd(), ".auth", slug, `${role}.json`);
 }

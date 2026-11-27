@@ -1,6 +1,8 @@
 import { caseStatusEnum } from "@/db/schema";
+import { testPlanSchema } from "@/lib/plan-schema";
 import type { ProjectRun, RunGroup, StepState } from "@/types/dashboard.types";
-import type { CaseCounts, Run, RunStatus, TestCase } from "@/types/shared.types";
+import type { PlanParseResult } from "@/types/runner.types";
+import type { CaseCounts, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
 
@@ -162,6 +164,29 @@ export function extractJson(text: string): unknown {
   const start = body.search(/[[{]/);
   if (start === -1) throw new Error("No JSON found in Claude's answer");
   return JSON.parse(body.slice(start));
+}
+
+export function truncate(text: string, maxChars: number) {
+  return text.length <= maxChars ? { text, truncated: false } : { text: text.slice(0, maxChars), truncated: true }
+}
+
+export function parsePlan(answer: string, roles: string[], depth: Depth): PlanParseResult {
+  let json: unknown;
+  try {
+    json = extractJson(answer);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+
+  const parsed = testPlanSchema.safeParse(json);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ") }
+
+  const unknownRoles = [...new Set(parsed.data.cases.map((testCase) => testCase.role).filter((role) => !roles.includes(role)))];
+  if (unknownRoles.length > 0) return { ok: false, error: `Unknown role(s) ${unknownRoles.join(", ")}; use one of ${roles.join(", ")}` }
+
+  const cases = depth === "base" ? parsed.data.cases.filter((testCase) => testCase.kind === "base") : parsed.data.cases;
+  if (cases.length === 0) return { ok: false, error: "The plan has no usable cases" }
+  return { ok: true, plan: { cases }, droppedEdgeCases: parsed.data.cases.length - cases.length }
 }
 
 export function todo(what: string): never {
