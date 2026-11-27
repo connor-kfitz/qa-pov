@@ -18,3 +18,13 @@ export const repairVerdictSchema = z.object({
   notes: z.string(),
   fixed: z.boolean()
 });
+
+export const writeReportSchema = z.object({
+  cases: z.array(
+    z.object({
+      file: z.string(),
+      status: z.enum(["passed", "failed"]),
+      note: z.string()
+    })
+  )
+});

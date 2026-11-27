@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import path from "node:path";
 
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -11,6 +11,7 @@ import { loadAppConfig } from "@/lib/app-config";
 import { todo } from "@/lib/helpers";
 import { plan } from "@/runner/plan";
 import { EnvProblemError, prepare } from "@/runner/prepare";
+import { write } from "@/runner/write";
 import type { RunContext } from "@/types/runner.types";
 import type { Depth, Run, RunStatus, Scenario } from "@/types/shared.types";
 
@@ -22,13 +23,14 @@ const { values } = parseArgs({
     depth: { type: "string", default: "base" },
     max: { type: "string" },
     feature: { type: "string" },
-    compare: { type: "string" }
+    compare: { type: "string" },
+    from: { type: "string" }
   }
 });
 
 async function main() {
   const run = values.run ? await claimRun(values.run) : await createRun();
-  await execute(run);
+  await execute(run, (values.from as RunStatus | undefined) ?? "preparing");
 }
 
 async function createRun() {
@@ -59,11 +61,20 @@ async function createRun() {
 async function claimRun(id: string) {
   const [run] = await db.select().from(schema.runs).where(eq(schema.runs.id, id));
   if (!run) throw new Error(`Run ${id} not found`);
-  if (run.status !== "queued") throw new Error(`Run ${id} is ${run.status}, not queued`);
+  if (values.from) {
+    await db.update(schema.runs).set({ error: null, finishedAt: null }).where(eq(schema.runs.id, id));
+    return run;
+  }
+  if (run.status !== "queued") throw new Error(`Run ${id} is ${run.status}, not queued; resume it with --from <step>`);
   return run;
 }
 
-async function execute(run: Run) {
+async function loadContext(runDir: string): Promise<RunContext | null> {
+  const saved = await readFile(path.join(runDir, "context.json"), "utf8").catch(() => null);
+  return saved ? { ...JSON.parse(saved), diff: "" } : null;
+}
+
+async function execute(run: Run, from: RunStatus) {
   const runDir = path.resolve("runs", run.id);
   await mkdir(path.join(runDir, "tests"), { recursive: true });
   console.log(`Run ${run.id} started (${run.scenario}, ${run.depth}) → ${runDir}`);
@@ -72,22 +83,24 @@ async function execute(run: Run) {
 
   const [appRow] = await db.select().from(schema.apps).where(eq(schema.apps.id, run.appId));
   const input = { run, app: await loadAppConfig(appRow.slug), runDir }
-  let context: RunContext | null = null;
+  let context: RunContext | null = from === "preparing" ? null : await loadContext(runDir);
 
   const steps: [RunStatus, () => Promise<void>][] = [
     ["preparing", async () => {
       context = await prepare(input);
     }],
     ["planning", async () => plan(input, context!)],
-    ["writing", async () => todo("claude -p + Playwright MCP → one spec per case in runs/<id>/tests")],
+    ["writing", async () => write(input, context)],
     ["running", async () => todo("npx playwright test with QA_APP and QA_RUN_DIR set")],
     ["repairing", async () => todo("one bounded repair pass on failures")],
     ["saving", async () => todo("write cases, verdicts and artifact paths to Postgres")]
   ];
 
-  await db.update(schema.runs).set({ startedAt: new Date() }).where(eq(schema.runs.id, run.id));
+  const start = steps.findIndex(([status]) => status === from);
+  if (start === -1) throw new Error(`--from must be one of ${steps.map(([status]) => status).join(", ")}`);
+  if (start === 0) await db.update(schema.runs).set({ startedAt: new Date() }).where(eq(schema.runs.id, run.id));
 
-  for (const [status, step] of steps) {
+  for (const [status, step] of steps.slice(start)) {
     await setStatus(status);
     console.log(`${new Date().toISOString()} ${status}`);
     try {

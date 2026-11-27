@@ -26,7 +26,9 @@ export const appConfigSchema = z.object({
   roles: z.record(z.string(), roleSchema)
 });
 
-export const appsDir = path.resolve(process.cwd(), "qa-apps");
+export const projectRoot = path.resolve(process.env.QA_ROOT ?? process.cwd());
+
+export const appsDir = path.join(projectRoot, "qa-apps");
 
 export async function loadAppConfig(slug: string): Promise<AppConfig> {
   const file = path.join(appsDir, `${slug}.json`);
@@ -57,5 +59,5 @@ export function bypassSecret(app: AppConfig) {
 }
 
 export function authStatePath(slug: string, role: string): string {
-  return path.resolve(process.cwd(), ".auth", slug, `${role}.json`);
+  return path.join(projectRoot, ".auth", slug, `${role}.json`);
 }

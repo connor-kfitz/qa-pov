@@ -1,5 +1,5 @@
 import { shortId, shortSha } from "@/lib/helpers";
-import type { RunContext } from "@/types/runner.types";
+import type { RunContext, SpecTarget } from "@/types/runner.types";
 import type { AppConfig, Run } from "@/types/shared.types";
 
 export function buildPlanPrompt(run: Run, app: AppConfig, context: RunContext, maxTests: number) {
@@ -74,4 +74,70 @@ export function buildPlanPrompt(run: Run, app: AppConfig, context: RunContext, m
 
 export function buildPlanRetryPrompt(prompt: string, error: string) {
   return `${prompt}\n\n## Fix your previous answer\n\nYour previous answer was rejected: ${error}\nReply again with only the corrected JSON.`;
+}
+
+export function buildWritePrompt(run: Run, app: AppConfig, role: string, targets: SpecTarget[], context: RunContext | null, paths: { fixtureImport: string; verifyCommand: string }) {
+  const cases = targets.flatMap((target, i) => [
+    `### ${i + 1}. ${target.file}`,
+    ``,
+    `- Title: ${target.title}`,
+    `- Kind: ${target.kind}`,
+    `- Steps:`,
+    ...target.steps.map((step) => `    - ${step}`),
+    `- Expected: ${target.expected}`,
+    ``
+  ]);
+
+  return [
+    `You write Playwright end-to-end tests for ${app.name}, a deployed web app, and check that each one runs.`,
+    ``,
+    `## Setup`,
+    ``,
+    `- Live URL: ${app.baseUrl}. Tests use relative paths (page.goto("/admin/reviews")); baseURL is set.`,
+    `- Every test here runs as the "${role}" role. The session is already signed in, so never log in or out.`,
+    `- You have a Playwright browser (the playwright MCP tools) that is signed in as ${role} on the live URL. Use it to open the pages each case touches and find real, stable selectors before you write. Don't guess selectors from the code alone.`,
+    context ? `- The app's code (${context.head.label} at ${shortSha(context.head.sha)}) is in ${context.codeDir.split("\\").join("/")} if you need to read it.` : `- The app's code isn't available; rely on the browser.`,
+    `- Write each test to the exact file name given below, in the current directory.`,
+    ``,
+    `## Test cases`,
+    ``,
+    ...cases,
+    `## How to write each file`,
+    ``,
+    `- Import only from the shared fixture: import { expect, test } from "${paths.fixtureImport}"; never from "@playwright/test" directly.`,
+    `- One test per file. Its title is exactly the case title.`,
+    `- Wrap each planned step in await test.step("<step text>", async () => { ... }).`,
+    `- Locate elements with getByRole, getByLabel, getByText or getByTestId. Use CSS or XPath only when nothing else works. Never use waitForTimeout; rely on auto-waiting and expect.`,
+    `- Assert the expected result exactly as planned. If the app doesn't do what the case expects, keep the assertion: that may be a real bug. Never weaken or delete an assertion to make a test pass.`,
+    `- Anything a test creates must be removed in test.afterEach (or try/finally), so cleanup runs even when an assertion fails. Find it by the unique name the case uses.`,
+    `- Style: TypeScript, double quotes, no semicolon directly after a closing brace, no trailing commas, no comments.`,
+    ``,
+    `## Safety rules (shared environment that sends real email)`,
+    ``,
+    `These apply to your own browsing as well as to the tests.`,
+    ``,
+    `- Only do what the planned steps need. Don't click other buttons that save, send, publish or delete.`,
+    `- Never submit the contact form or trigger an email to anyone except the signed-in test user.`,
+    `- If you must create a user or record with an email address, use qa-${shortId(run.id)}-<n>@example.com.`,
+    `- Only change data that you or the test created; never edit or delete existing records or the test account itself.`,
+    `- Delete anything you create while exploring before you finish.`,
+    `- Never read, print or write passwords, secrets or .env files.`,
+    ``,
+    `## Check each test`,
+    ``,
+    `After writing a file, run it once with exactly:`,
+    ``,
+    `    ${paths.verifyCommand} <file name>`,
+    ``,
+    `If it fails because the test is wrong (selector, timing, navigation), fix the test and run it again, up to 3 tries.`,
+    `If it fails because the app behaves differently from the expected result, stop fixing and report it as failed.`,
+    ``,
+    `## Output`,
+    ``,
+    `When every file is written and checked, reply with only this JSON:`,
+    "```json",
+    `{"cases": [{"file": "${targets[0]?.file ?? "01-example.${role}.spec.ts"}", "status": "passed", "note": "One sentence: what the test checks, or why it fails."}]}`,
+    "```",
+    `"status" is the result of your last run of that file: "passed" or "failed".`
+  ].join("\n");
 }

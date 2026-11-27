@@ -1,16 +1,16 @@
-import path from "node:path";
-
 import { spawn, spawnSync } from "node:child_process";
 import type { ClaudeOptions, ClaudeResult } from "@/types/runner.types";
 
 export function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResult> {
-  const args = ["-p", "--output-format", "json"];
-  if (opts.withBrowser) args.push("--mcp-config", path.resolve("playwright-mcp.json"));
+  const args = ["-p", "--output-format", "json", "--setting-sources", "project", "--disable-slash-commands", "--no-session-persistence", "--strict-mcp-config"];
+  if (opts.mcpConfig) args.push("--mcp-config", opts.mcpConfig);
+  if (opts.permissionMode) args.push("--permission-mode", opts.permissionMode);
+  for (const dir of opts.addDirs ?? []) args.push("--add-dir", dir);
   if (opts.tools) args.push("--tools", opts.tools.join(","));
   if (opts.allowedTools?.length) args.push("--allowedTools", opts.allowedTools.join(","));
 
   return new Promise((resolve, reject) => {
-    const child = spawn("claude", args, { cwd: opts.cwd, shell: process.platform === "win32" });
+    const child = spawn("claude", args, { cwd: opts.cwd, env: { ...process.env, ...opts.env } });
     let stdout = "";
     let stderr = "";
     let timedOut = false;

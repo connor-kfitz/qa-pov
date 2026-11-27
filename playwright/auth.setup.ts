@@ -1,14 +1,27 @@
 import path from "node:path";
 
 import { mkdirSync } from "node:fs";
+import type { Page } from "@playwright/test";
 import { authStatePath, loadAppConfigSync } from "../src/lib/app-config";
 import { test as setup } from "./fixtures";
 
 const slug = process.env.QA_APP!;
 const app = loadAppConfigSync(slug);
 
+function saveState(page: Page, role: string) {
+  const file = authStatePath(slug, role);
+  mkdirSync(path.dirname(file), { recursive: true });
+  return page.context().storageState({ path: file });
+}
+
 for (const [role, cfg] of Object.entries(app.roles)) {
-  if ("skip" in cfg) continue;
+  if ("skip" in cfg) {
+    setup(`open the app as ${role}`, async ({ page }) => {
+      await page.goto("/");
+      await saveState(page, role);
+    });
+    continue;
+  }
 
   setup(`sign in as ${role}`, async ({ page }) => {
     const email = process.env[cfg.emailEnv];
@@ -27,8 +40,6 @@ for (const [role, cfg] of Object.entries(app.roles)) {
     await submit.click();
     await page.waitForURL((url) => url.pathname !== loginPath);
 
-    const file = authStatePath(slug, role);
-    mkdirSync(path.dirname(file), { recursive: true });
-    await page.context().storageState({ path: file });
+    await saveState(page, role);
   });
 }
