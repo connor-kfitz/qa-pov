@@ -1,12 +1,14 @@
 {
   "slug": "synergy-qmp",
   "name": "Synergy QMP",
-  "baseUrl": "https://TODO-develop-url.example.com",
-  "repoPath": "C:/path/to/synergy-qmp",
+  "baseUrl": "https://synergy-qmp-git-develop-fitz-systems.vercel.app",
+  "repoUrl": "https://github.com/fitz-systems/synergy-qmp",
+  "repoPath": "C:/Users/Connor/Documents/Projects/Professional/synergy-qmp",
   "compareBranch": "develop",
+  "bypassSecretEnv": "SYNERGY_QMP_BYPASS_SECRET",
   "roles": {
     "admin": {
-      "loginUrl": "/login",
+      "loginUrl": "/admin/login",
       "emailEnv": "SYNERGY_QMP_ADMIN_EMAIL",
       "passwordEnv": "SYNERGY_QMP_ADMIN_PASSWORD"
     },

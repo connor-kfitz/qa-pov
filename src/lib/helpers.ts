@@ -135,9 +135,17 @@ export function slugify(text: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function envName(...parts: string[]) {
+  return parts.join("_").toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+}
+
 export function roleEnvNames(slug: string, role: string) {
-  const prefix = `${slug}_${role}`.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+  const prefix = envName(slug, role);
   return { emailEnv: `${prefix}_EMAIL`, passwordEnv: `${prefix}_PASSWORD` }
+}
+
+export function bypassSecretEnvName(slug: string) {
+  return envName(slug, "bypass_secret");
 }
 
 export function escapeHtml(text: string) {

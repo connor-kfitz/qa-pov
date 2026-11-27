@@ -4,7 +4,7 @@ import { useActionState, useState, type ChangeEvent } from "react";
 import { Field, FormError, inputClass } from "@/components/form";
 import { buttonClass } from "@/components/page-header";
 import { createProject } from "@/app/actions";
-import { roleEnvNames, slugify } from "@/lib/helpers";
+import { bypassSecretEnvName, roleEnvNames, slugify } from "@/lib/helpers";
 import type { FormState, RoleRow } from "@/types/dashboard.types";
 
 const secondaryButtonClass = "inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-hover";
@@ -13,6 +13,7 @@ export function NewProjectForm() {
   const [state, formAction, pending] = useActionState<FormState, FormData>(createProject, {});
   const [fields, setFields] = useState({ name: "", baseUrl: "", repoUrl: "", repoPath: "", compareBranch: "develop" });
   const [roles, setRoles] = useState<RoleRow[]>([{ key: 0, name: "admin", loginUrl: "/login", skip: false }]);
+  const [protectedPreview, setProtectedPreview] = useState(false);
   const slug = slugify(fields.name);
 
   const setField = (field: keyof typeof fields) => (event: ChangeEvent<HTMLInputElement>) => setFields({ ...fields, [field]: event.target.value });
@@ -28,6 +29,17 @@ export function NewProjectForm() {
 
       <Field label="Live URL" htmlFor="baseUrl" hint="The deployed env tests run against">
         <input id="baseUrl" name="baseUrl" type="url" value={fields.baseUrl} onChange={setField("baseUrl")} placeholder="https://develop.example.com" className={inputClass} required />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input type="checkbox" name="protectedPreview" checked={protectedPreview} onChange={(event) => setProtectedPreview(event.target.checked)} className="accent-foreground" />
+            Behind Vercel Deployment Protection
+          </label>
+          {protectedPreview && (
+            <span>
+              Bypass secret from <code className="font-mono">.env</code>: <code className="font-mono">{bypassSecretEnvName(slug || "project")}</code>
+            </span>
+          )}
+        </div>
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">

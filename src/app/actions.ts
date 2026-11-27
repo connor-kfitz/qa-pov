@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig, saveNewAppConfig } from "@/lib/app-config";
-import { roleEnvNames, slugify } from "@/lib/helpers";
+import { bypassSecretEnvName, roleEnvNames, slugify } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
 import type { FormState } from "@/types/dashboard.types";
 import type { AppConfig } from "@/types/shared.types";
@@ -64,6 +64,7 @@ const createProjectSchema = z.object({
   repoUrl: z.union([z.literal(""), z.url("GitHub repo must be a full URL, like https://github.com/org/repo.")]),
   repoPath: z.string().trim().min(1, "Add the local repo path so the runner can read the code."),
   compareBranch: z.string().trim().min(1, "Add a default branch."),
+  protectedPreview: z.literal("on").optional(),
   roles: z.array(roleInputSchema).min(1, "Add at least one role.")
 });
 
@@ -88,6 +89,7 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
     ...(input.repoUrl && { repoUrl: input.repoUrl }),
     repoPath: input.repoPath,
     compareBranch: input.compareBranch,
+    ...(input.protectedPreview && { bypassSecretEnv: bypassSecretEnvName(slug) }),
     roles: Object.fromEntries(input.roles.map((role) => [role.name, role.skip ? { skip: true as const } : { loginUrl: role.loginUrl || "/login", ...roleEnvNames(slug, role.name) }]))
   }
 

@@ -22,6 +22,7 @@ export const appConfigSchema = z.object({
   repoUrl: z.url().optional(),
   repoPath: z.string(),
   compareBranch: z.string().default("develop"),
+  bypassSecretEnv: z.string().optional(),
   roles: z.record(z.string(), roleSchema)
 });
 
