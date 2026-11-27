@@ -8,9 +8,11 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig } from "@/lib/app-config";
-import { todo } from "@/lib/helpers";
 import { plan } from "@/runner/plan";
 import { EnvProblemError, prepare } from "@/runner/prepare";
+import { repair } from "@/runner/repair";
+import { runTests } from "@/runner/run";
+import { save } from "@/runner/save";
 import { write } from "@/runner/write";
 import type { RunContext } from "@/types/runner.types";
 import type { Depth, Run, RunStatus, Scenario } from "@/types/shared.types";
@@ -91,9 +93,9 @@ async function execute(run: Run, from: RunStatus) {
     }],
     ["planning", async () => plan(input, context!)],
     ["writing", async () => write(input, context)],
-    ["running", async () => todo("npx playwright test with QA_APP and QA_RUN_DIR set")],
-    ["repairing", async () => todo("one bounded repair pass on failures")],
-    ["saving", async () => todo("write cases, verdicts and artifact paths to Postgres")]
+    ["running", async () => runTests(input)],
+    ["repairing", async () => repair(input)],
+    ["saving", async () => save(input)]
   ];
 
   const start = steps.findIndex(([status]) => status === from);

@@ -1,7 +1,7 @@
 import { caseStatusEnum } from "@/db/schema";
 import { testPlanSchema } from "@/lib/plan-schema";
 import type { ProjectRun, RunGroup, StepState } from "@/types/dashboard.types";
-import type { PlanParseResult } from "@/types/runner.types";
+import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
 import type { CaseCounts, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
@@ -187,6 +187,39 @@ export function parsePlan(answer: string, roles: string[], depth: Depth): PlanPa
   const cases = depth === "base" ? parsed.data.cases.filter((testCase) => testCase.kind === "base") : parsed.data.cases;
   if (cases.length === 0) return { ok: false, error: "The plan has no usable cases" }
   return { ok: true, plan: { cases }, droppedEdgeCases: parsed.data.cases.length - cases.length }
+}
+
+export function stripAnsi(text: string) {
+  return text.replace(/\u001b\[[0-9;]*m/g, "");
+}
+
+const reportStatuses: Record<string, ReportedTest["status"]> = {
+  expected: "passed",
+  unexpected: "failed",
+  flaky: "flaky",
+  skipped: "skipped"
+}
+
+export function flattenReport(report: PlaywrightReport): ReportedTest[] {
+  const walk = (suite: ReportSuite): ReportedTest[] => [
+    ...(suite.specs ?? []).flatMap((spec) =>
+      spec.tests.map((test) => {
+        const last = test.results.at(-1);
+        const failure = test.results.find((result) => result.error?.message)?.error?.message ?? null;
+        return {
+          file: spec.file,
+          title: spec.title,
+          project: test.projectName,
+          status: reportStatuses[test.status] ?? "failed",
+          durationMs: last?.duration ?? 0,
+          error: failure ? stripAnsi(failure) : null,
+          attachments: (last?.attachments ?? []).flatMap((attachment) => (attachment.path ? [{ name: attachment.name, path: attachment.path }] : []))
+        }
+      })
+    ),
+    ...(suite.suites ?? []).flatMap(walk)
+  ];
+  return report.suites.flatMap(walk);
 }
 
 export function todo(what: string): never {

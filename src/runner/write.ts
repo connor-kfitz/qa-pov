@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { authStatePath } from "@/lib/app-config";
@@ -19,6 +19,7 @@ const writeTimeoutMs = 30 * 60_000;
 export async function write({ run, app, runDir }: StepInput, context: RunContext | null) {
   const testsDir = path.join(runDir, "tests");
   const writeDir = path.join(runDir, "write");
+  await rm(testsDir, { recursive: true, force: true });
   await mkdir(testsDir, { recursive: true });
   await mkdir(writeDir, { recursive: true });
   const env = { QA_APP: app.slug, QA_RUN_DIR: runDir, QA_ROOT: process.cwd() }
@@ -98,7 +99,7 @@ async function recordWritten(group: SpecTarget[], testsDir: string, report: Writ
       continue;
     }
 
-    const notes = entry ? `Write check ${entry.status}: ${entry.note}` : "Written; Claude didn't report a check result";
-    await db.update(schema.testCases).set({ specPath: toRunRelativePath(file), status: "written", notes }).where(eq(schema.testCases.id, target.caseId));
+    console.log(`${target.file}: write check ${entry?.status ?? "not reported"}`);
+    await db.update(schema.testCases).set({ specPath: toRunRelativePath(file), status: "written", notes: entry?.note ?? null }).where(eq(schema.testCases.id, target.caseId));
   }
 }
