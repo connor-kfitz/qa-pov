@@ -45,17 +45,22 @@ export async function resolveRef(repoPath: string, ref: string): Promise<Resolve
 
 export async function exportSnapshot(repoPath: string, sha: string, dest: string) {
   await mkdir(dest, { recursive: true });
-  await new Promise<void>((resolve, reject) => {
-    const archive = spawn("git", ["archive", "--format=tar", sha], { cwd: repoPath });
-    const tar = spawn("tar", ["-xf", "-", "-C", dest]);
-    let stderr = "";
-    archive.stderr.on("data", (d) => (stderr += d));
-    tar.stderr.on("data", (d) => (stderr += d));
-    archive.stdout.pipe(tar.stdin);
-    archive.on("error", reject);
-    tar.on("error", reject);
-    tar.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Couldn't export ${sha.slice(0, 7)}: ${stderr.trim()}`))));
-  });
+  const archive = spawn("git", ["archive", "--format=tar", sha], { cwd: repoPath });
+  const tar = spawn("tar", ["-xf", "-"], { cwd: dest });
+  let stderr = "";
+  archive.stderr.on("data", (d) => (stderr += d));
+  tar.stderr.on("data", (d) => (stderr += d));
+  archive.stdout.on("error", () => {});
+  tar.stdin.on("error", () => {});
+  archive.stdout.pipe(tar.stdin);
+
+  const exitCode = (child: typeof archive) =>
+    new Promise<number | null>((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", resolve);
+    });
+  const codes = await Promise.all([exitCode(archive), exitCode(tar)]);
+  if (codes.some((code) => code !== 0)) throw new Error(`Couldn't export ${sha.slice(0, 7)}: ${stderr.trim()}`);
 }
 
 export async function diffSummary(repoPath: string, base: string, head: string) {

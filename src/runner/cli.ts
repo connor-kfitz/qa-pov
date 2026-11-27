@@ -102,7 +102,15 @@ async function execute(run: Run, from: RunStatus) {
   if (start === -1) throw new Error(`--from must be one of ${steps.map(([status]) => status).join(", ")}`);
   if (start === 0) await db.update(schema.runs).set({ startedAt: new Date() }).where(eq(schema.runs.id, run.id));
 
+  let current: RunStatus = from;
+  process.on("uncaughtException", async (err) => {
+    console.error(err);
+    await db.update(schema.runs).set({ status: "failed", error: `${current}: ${err.message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id)).catch(() => {});
+    process.exit(1);
+  });
+
   for (const [status, step] of steps.slice(start)) {
+    current = status;
     await setStatus(status);
     console.log(`${new Date().toISOString()} ${status}`);
     try {

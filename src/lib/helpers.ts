@@ -191,7 +191,7 @@ export function parsePlan(answer: string, roles: string[], depth: Depth): PlanPa
 }
 
 export function stripAnsi(text: string) {
-  return text.replace(/\u001b\[[0-9;]*m/g, "");
+  return text.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "");
 }
 
 const reportStatuses: Record<string, ReportedTest["status"]> = {

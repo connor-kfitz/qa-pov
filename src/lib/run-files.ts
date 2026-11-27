@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { readFile } from "node:fs/promises";
+import { stripAnsi } from "@/lib/helpers";
 
 export const runsDir = path.resolve(process.cwd(), "runs");
 
@@ -30,6 +31,6 @@ export async function readRunFile(storedPath: string) {
 export async function readRunLog(runId: string, maxLines = 300) {
   const log = await readFile(runLogPath(runId), "utf8").catch(() => null);
   if (log === null) return null;
-  const lines = log.trimEnd().split(/\r?\n/);
+  const lines = stripAnsi(log).trimEnd().split(/\r?\n/);
   return lines.slice(-maxLines).join("\n");
 }
