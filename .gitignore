@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.worktrees/
 /.pnp
 .pnp.*
 .yarn/*
@@ -32,6 +33,14 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# qa runs: saved logins, generated specs, videos/screenshots/traces
+/.auth/
+/runs/
+/artifacts/
+/test-results/
+/playwright-report/
 
 # vercel
 .vercel
@@ -39,3 +48,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local claude settings
+.claude/settings.local.json

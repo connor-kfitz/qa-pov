@@ -1,0 +1,19 @@
+{
+  "slug": "synergy-qmp",
+  "name": "Synergy QMP",
+  "baseUrl": "https://TODO-develop-url.example.com",
+  "repoPath": "C:/path/to/synergy-qmp",
+  "compareBranch": "develop",
+  "roles": {
+    "admin": {
+      "loginUrl": "/login",
+      "emailEnv": "SYNERGY_QMP_ADMIN_EMAIL",
+      "passwordEnv": "SYNERGY_QMP_ADMIN_PASSWORD"
+    },
+    "student": {
+      "loginUrl": "/login",
+      "emailEnv": "SYNERGY_QMP_STUDENT_EMAIL",
+      "passwordEnv": "SYNERGY_QMP_STUDENT_PASSWORD"
+    }
+  }
+}

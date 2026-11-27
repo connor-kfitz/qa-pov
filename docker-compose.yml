@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: qa
+      POSTGRES_PASSWORD: qa
+      POSTGRES_DB: qa_pov
+    ports:
+      - "5433:5432"
+    volumes:
+      - qa_pov_pg:/var/lib/postgresql/data
+
+volumes:
+  qa_pov_pg:
