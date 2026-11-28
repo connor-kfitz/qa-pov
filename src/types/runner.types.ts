@@ -11,12 +11,14 @@ export interface ClaudeOptions {
   allowedTools?: string[];
   tools?: string[];
   timeoutMs?: number;
+  model?: string;
 }
 
 export interface ClaudeUsage {
   costUsd?: number;
   durationMs?: number;
   turns?: number;
+  model?: string;
 }
 
 export interface ClaudeResult extends ClaudeUsage {

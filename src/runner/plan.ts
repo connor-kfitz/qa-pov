@@ -19,7 +19,7 @@ export async function plan({ run, app, runDir }: StepInput, context: RunContext)
 
   const ask = async (prompt: string, attempt: number) => {
     await writeFile(path.join(planDir, `prompt-${attempt}.md`), prompt);
-    const result = await askClaude({ runId: run.id, step: "planning", label: `Attempt ${attempt}` }, prompt, { cwd: context.codeDir, tools: ["Read", "Glob", "Grep"], timeoutMs: planTimeoutMs });
+    const result = await askClaude({ runId: run.id, step: "planning", label: `Attempt ${attempt}` }, prompt, { cwd: context.codeDir, tools: ["Read", "Glob", "Grep"], timeoutMs: planTimeoutMs, model: run.models.planning });
     await writeFile(path.join(planDir, `answer-${attempt}.md`), result.text);
     console.log(`Plan attempt ${attempt}: ${Math.round((result.durationMs ?? 0) / 1000)}s, $${(result.costUsd ?? 0).toFixed(2)}`);
     return parsePlan(result.text, roles, run.depth);

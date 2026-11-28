@@ -3,9 +3,18 @@ import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
 import type { CommitOption, DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RefSuggestion, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
-import type { CaseCounts, ClaudeCall, Depth, RoleConfig, Run, RunScope, RunStatus, TestCase } from "@/types/shared.types";
+import type { CaseCounts, ClaudeCall, ClaudeStep, Depth, ModelChoice, RoleConfig, Run, RunScope, RunStatus, StepModels, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
+export const claudeSteps = ["planning", "writing", "repairing"] as const satisfies ClaudeStep[];
+export const modelChoices = ["opus", "sonnet", "haiku"] as const satisfies ModelChoice[];
+export const defaultStepModels: StepModels = { planning: "opus", writing: "sonnet", repairing: "opus" }
+
+const modelLabels: Record<ModelChoice, string> = {
+  opus: "Opus",
+  sonnet: "Sonnet",
+  haiku: "Haiku"
+}
 
 const stepLabels: Record<(typeof runSteps)[number], string> = {
   preparing: "Prepare",
@@ -50,6 +59,21 @@ export function countByStatus(cases: TestCase[]) {
 export function stepLabel(step: RunStatus) {
   const known = runSteps.find((runStep) => runStep === step);
   return known ? stepLabels[known] : step;
+}
+
+export function modelLabel(model: ModelChoice | undefined) {
+  return model ? modelLabels[model] : "CLI default";
+}
+
+export function stepModelsLabel(models: StepModels) {
+  return claudeSteps.map((step) => `${stepLabel(step)} ${modelLabel(models[step])}`).join(" · ");
+}
+
+export function primaryModel(modelUsage: unknown) {
+  if (!modelUsage || typeof modelUsage !== "object") return undefined;
+  const entries = Object.entries(modelUsage as Record<string, { costUSD?: number }>);
+  entries.sort(([, a], [, b]) => (b.costUSD ?? 0) - (a.costUSD ?? 0));
+  return entries[0]?.[0];
 }
 
 export function totalCost(calls: ClaudeCall[]) {

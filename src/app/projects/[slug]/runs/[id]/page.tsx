@@ -9,7 +9,7 @@ import { PageHeader, Section, Skeleton, panelClass } from "@/components/page-hea
 import { RetryRunForm } from "@/components/retry-run-form";
 import { RunSteps } from "@/components/run-steps";
 import { CaseStatusBadge, RunStatusBadge, VerdictBadge } from "@/components/status-badge";
-import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, retrySteps, runDuration, scenarioDetail, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
+import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, retrySteps, runDuration, scenarioDetail, stepModelsLabel, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
 import { readRunLog } from "@/lib/run-files";
 import { getActiveRun, getRun, listCases, listClaudeCalls } from "@/lib/runs";
 import type { App, ClaudeCall, Run, TestCase } from "@/types/shared.types";
@@ -69,6 +69,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         </Fact>
         <Fact label="Deployed commit">{deployedCommitLabel(run) ? <span className="font-mono">{deployedCommitLabel(run)}</span> : "—"}</Fact>
         <Fact label="Max tests">{run.maxTests ?? "No limit"}</Fact>
+        <Fact label="Models">{stepModelsLabel(run.models)}</Fact>
         <Fact label="Run id">
           <span className="font-mono" title={run.id}>
             {shortId(run.id)}
@@ -195,11 +196,12 @@ function CasesTable({ run, slug, cases }: { run: Run; slug: string; cases: TestC
 function ClaudeCallsTable({ calls }: { calls: ClaudeCall[] }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full min-w-[520px] text-left text-sm">
+      <table className="w-full min-w-[640px] text-left text-sm">
         <thead className="border-b bg-panel text-xs text-muted">
           <tr>
             <th className="px-4 py-2.5 font-medium">Step</th>
             <th className="px-4 py-2.5 font-medium">Call</th>
+            <th className="px-4 py-2.5 font-medium">Model</th>
             <th className="px-4 py-2.5 text-right font-medium">Turns</th>
             <th className="px-4 py-2.5 text-right font-medium">Duration</th>
             <th className="px-4 py-2.5 text-right font-medium">Cost</th>
@@ -213,6 +215,7 @@ function ClaudeCallsTable({ calls }: { calls: ClaudeCall[] }) {
                 {call.label}
                 {!call.ok && <span className="ml-2 text-xs font-medium text-red-700 dark:text-red-300">failed</span>}
               </td>
+              <td className="px-4 py-3 font-mono text-xs text-muted">{call.model ?? "—"}</td>
               <td className="px-4 py-3 text-right text-muted tabular-nums">{call.turns ?? "—"}</td>
               <td className="px-4 py-3 text-right text-muted tabular-nums">{call.durationMs !== null ? formatDuration(call.durationMs) : "—"}</td>
               <td className="px-4 py-3 text-right tabular-nums">{call.costUsd !== null ? formatCost(call.costUsd) : "—"}</td>
@@ -221,7 +224,7 @@ function ClaudeCallsTable({ calls }: { calls: ClaudeCall[] }) {
         </tbody>
         <tfoot className="border-t bg-panel">
           <tr>
-            <td colSpan={4} className="px-4 py-2.5 text-xs font-medium text-muted">
+            <td colSpan={5} className="px-4 py-2.5 text-xs font-medium text-muted">
               Total
             </td>
             <td className="px-4 py-2.5 text-right font-medium tabular-nums">{formatCost(totalCost(calls))}</td>

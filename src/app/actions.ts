@@ -7,13 +7,13 @@ import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig, saveAppConfig, saveNewAppConfig } from "@/lib/app-config";
 import { updateEnvFile } from "@/lib/env-file";
-import { retrySteps, runSteps, slugify, stepLabel } from "@/lib/helpers";
+import { claudeSteps, modelChoices, retrySteps, runSteps, slugify, stepLabel } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
 import { buildAppConfig, parseProjectForm, secretUpdates } from "@/lib/project-input";
 import { requeueRun } from "@/lib/run-queue";
 import { getRun } from "@/lib/runs";
 import type { FormState, ProjectInput } from "@/types/dashboard.types";
-import type { AppConfig } from "@/types/shared.types";
+import type { AppConfig, StepModels } from "@/types/shared.types";
 
 const startRunSchema = z.object({
   app: z.string().min(1, "Pick a project."),
@@ -21,7 +21,10 @@ const startRunSchema = z.object({
   depth: z.enum(schema.depthEnum.enumValues),
   featureRef: z.string().trim(),
   compareRef: z.string().trim(),
-  maxTests: z.union([z.literal(""), z.coerce.number().int("Max tests must be a whole number.").min(1, "Max tests must be at least 1.").max(100, "Max tests can be at most 100.")])
+  maxTests: z.union([z.literal(""), z.coerce.number().int("Max tests must be a whole number.").min(1, "Max tests must be at least 1.").max(100, "Max tests can be at most 100.")]),
+  planning: z.enum(["default", ...modelChoices], "Pick a model for each step."),
+  writing: z.enum(["default", ...modelChoices], "Pick a model for each step."),
+  repairing: z.enum(["default", ...modelChoices], "Pick a model for each step.")
 });
 
 export async function startRun(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -34,6 +37,12 @@ export async function startRun(_prev: FormState, formData: FormData): Promise<Fo
   const app = await loadAppConfig(input.app).catch(() => null);
   if (!app) return { error: `No config found for ${input.app} in qa-apps/.` };
 
+  const models: StepModels = {}
+  for (const step of claudeSteps) {
+    const choice = input[step];
+    if (choice !== "default") models[step] = choice;
+  }
+
   const appRow = await upsertApp(app);
   const [run] = await db
     .insert(schema.runs)
@@ -42,6 +51,7 @@ export async function startRun(_prev: FormState, formData: FormData): Promise<Fo
       scenario: input.scenario,
       depth: input.depth,
       maxTests: input.maxTests === "" ? null : input.maxTests,
+      models,
       compareRef: input.compareRef || app.compareBranch,
       featureRef: input.scenario === "feature" ? input.featureRef : null
     })

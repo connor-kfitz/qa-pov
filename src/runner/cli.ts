@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig } from "@/lib/app-config";
-import { runSteps } from "@/lib/helpers";
+import { claudeSteps, defaultStepModels, modelChoices, runSteps } from "@/lib/helpers";
 import { snapshotDir } from "@/lib/run-files";
 import { acquireRunLock, launchNextQueuedRun, releaseRunLock, requeueRun } from "@/lib/run-queue";
 import { plan } from "@/runner/plan";
@@ -18,7 +18,7 @@ import { runTests } from "@/runner/run";
 import { save } from "@/runner/save";
 import { write } from "@/runner/write";
 import type { RunContext } from "@/types/runner.types";
-import type { Depth, Run, RunStatus, Scenario } from "@/types/shared.types";
+import type { Depth, ModelChoice, Run, RunStatus, Scenario, StepModels } from "@/types/shared.types";
 
 const { values } = parseArgs({
   options: {
@@ -29,7 +29,10 @@ const { values } = parseArgs({
     max: { type: "string" },
     feature: { type: "string" },
     compare: { type: "string" },
-    from: { type: "string" }
+    from: { type: "string" },
+    "plan-model": { type: "string" },
+    "write-model": { type: "string" },
+    "repair-model": { type: "string" }
   }
 });
 
@@ -71,6 +74,7 @@ async function createRun() {
   if (!schema.depthEnum.enumValues.includes(depth)) throw new Error("--depth must be base or base_edge");
   if (scenario === "feature" && !values.feature) throw new Error("--feature <branch|PR|range> is required for a feature run");
 
+  const models = parseModelFlags();
   const app = await loadAppConfig(values.app);
   const appRow = await upsertApp(app);
 
@@ -81,11 +85,25 @@ async function createRun() {
       scenario,
       depth,
       maxTests: values.max ? Number(values.max) : null,
+      models,
       compareRef: values.compare ?? app.compareBranch,
       featureRef: values.feature ?? null
     })
     .returning();
   return run.id;
+}
+
+function parseModelFlags() {
+  const flags: Record<(typeof claudeSteps)[number], string | undefined> = { planning: values["plan-model"], writing: values["write-model"], repairing: values["repair-model"] }
+  const models: StepModels = { ...defaultStepModels }
+  for (const step of claudeSteps) {
+    const flag = flags[step];
+    if (flag === undefined) continue;
+    if (flag === "default") delete models[step];
+    else if (modelChoices.some((choice) => choice === flag)) models[step] = flag as ModelChoice;
+    else throw new Error(`Model flags take ${modelChoices.join(", ")} or default`);
+  }
+  return models;
 }
 
 async function queueExisting(id: string, from: RunStatus | undefined, holdsLock: boolean) {

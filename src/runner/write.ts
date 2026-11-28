@@ -55,7 +55,8 @@ export async function write({ run, app, runDir }: StepInput, context: RunContext
       addDirs: codeDir ? [codeDir] : [],
       mcpConfig,
       env,
-      timeoutMs: writeTimeoutMs
+      timeoutMs: writeTimeoutMs,
+      model: run.models.writing
     });
     await writeFile(path.join(writeDir, `answer-${role}.md`), result.text);
     console.log(`Wrote ${role} tests: ${Math.round((result.durationMs ?? 0) / 1000)}s, $${(result.costUsd ?? 0).toFixed(2)}`);

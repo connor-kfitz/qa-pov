@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { db, schema } from "@/db";
+import { primaryModel } from "@/lib/helpers";
 import type { ClaudeCallTag, ClaudeOptions, ClaudeResult, ClaudeUsage } from "@/types/runner.types";
 
 export class ClaudeError extends Error {
@@ -11,19 +12,20 @@ export class ClaudeError extends Error {
 export async function askClaude(tag: ClaudeCallTag, prompt: string, opts: ClaudeOptions = {}) {
   try {
     const result = await runClaude(prompt, opts);
-    await recordCall(tag, true, result);
+    await recordCall(tag, true, result, opts.model);
     return result;
   } catch (err) {
-    await recordCall(tag, false, err instanceof ClaudeError ? err.usage : {});
+    await recordCall(tag, false, err instanceof ClaudeError ? err.usage : {}, opts.model);
     throw err;
   }
 }
 
-async function recordCall({ runId, step, label }: ClaudeCallTag, ok: boolean, usage: ClaudeUsage) {
+async function recordCall({ runId, step, label }: ClaudeCallTag, ok: boolean, usage: ClaudeUsage, requestedModel: string | undefined) {
   await db.insert(schema.claudeCalls).values({
     runId,
     step,
     label,
+    model: usage.model ?? requestedModel ?? null,
     ok,
     costUsd: usage.costUsd ?? null,
     durationMs: usage.durationMs ?? null,
@@ -33,6 +35,7 @@ async function recordCall({ runId, step, label }: ClaudeCallTag, ok: boolean, us
 
 function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResult> {
   const args = ["-p", "--output-format", "json", "--setting-sources", "project", "--disable-slash-commands", "--no-session-persistence", "--strict-mcp-config"];
+  if (opts.model) args.push("--model", opts.model);
   if (opts.mcpConfig) args.push("--mcp-config", opts.mcpConfig);
   if (opts.permissionMode) args.push("--permission-mode", opts.permissionMode);
   for (const dir of opts.addDirs ?? []) args.push("--add-dir", dir);
@@ -59,7 +62,7 @@ function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResu
       if (timer) clearTimeout(timer);
       if (timedOut) return reject(new ClaudeError(`claude timed out after ${Math.round((opts.timeoutMs ?? 0) / 1000)}s`, { durationMs: opts.timeoutMs }));
       const out = parseOutput(stdout);
-      const usage: ClaudeUsage = out ? { costUsd: out.total_cost_usd, durationMs: out.duration_ms, turns: out.num_turns } : {};
+      const usage: ClaudeUsage = out ? { costUsd: out.total_cost_usd, durationMs: out.duration_ms, turns: out.num_turns, model: primaryModel(out.modelUsage) } : {};
       if (code !== 0) return reject(new ClaudeError(`claude exited ${code}: ${stderr.trim() || stdout.slice(0, 500)}`, usage));
       if (!out) return reject(new ClaudeError(`Could not parse claude output: ${stdout.slice(0, 500)}`, usage));
       if (out.is_error) return reject(new ClaudeError(String(out.result), usage));

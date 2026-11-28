@@ -1,4 +1,5 @@
 import { boolean, doublePrecision, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import type { StepModels } from "@/types/shared.types";
 
 export const scenarioEnum = pgEnum("scenario", ["codebase", "feature"]);
 export const depthEnum = pgEnum("depth", ["base", "base_edge"]);
@@ -25,6 +26,7 @@ export const runs = pgTable("runs", {
   scenario: scenarioEnum("scenario").notNull(),
   depth: depthEnum("depth").notNull().default("base"),
   maxTests: integer("max_tests"),
+  models: jsonb("models").$type<StepModels>().notNull().default({}),
   compareRef: text("compare_ref"),
   featureRef: text("feature_ref"),
   status: runStatusEnum("status").notNull().default("queued"),
@@ -61,6 +63,7 @@ export const claudeCalls = pgTable("claude_calls", {
   runId: uuid("run_id").notNull().references(() => runs.id, { onDelete: "cascade" }),
   step: runStatusEnum("step").notNull(),
   label: text("label").notNull(),
+  model: text("model"),
   ok: boolean("ok").notNull(),
   costUsd: doublePrecision("cost_usd"),
   durationMs: integer("duration_ms"),

@@ -72,7 +72,8 @@ export async function repair({ run, app, runDir }: StepInput) {
       addDirs: [runDir],
       mcpConfig: await writeBrowserConfig(repairDir, app, role),
       env,
-      timeoutMs: repairTimeoutMs
+      timeoutMs: repairTimeoutMs,
+      model: run.models.repairing
     });
     await writeFile(path.join(repairDir, `answer-${role}.md`), result.text);
     console.log(`Repair session for ${role}: ${Math.round((result.durationMs ?? 0) / 1000)}s, $${(result.costUsd ?? 0).toFixed(2)}`);

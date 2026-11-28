@@ -5,6 +5,7 @@ import { Choice, Field, FormError, Select, inputClass } from "@/components/form"
 import { buttonClass } from "@/components/page-header";
 import { RefCombobox } from "@/components/ref-combobox";
 import { startRun } from "@/app/actions";
+import { claudeSteps, defaultStepModels, modelChoices, modelLabel, stepLabel } from "@/lib/helpers";
 import type { AppOption, FormState } from "@/types/dashboard.types";
 import type { Scenario } from "@/types/shared.types";
 
@@ -73,6 +74,27 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
       <Field label="Max tests" htmlFor="maxTests" hint="Claude ranks cases by risk and keeps the top N">
         <input id="maxTests" name="maxTests" type="number" min={1} max={100} placeholder="No limit" className={`${inputClass} sm:max-w-40`}/>
       </Field>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium">
+          Models
+          <span className="ml-2 font-normal text-muted">Write runs the longest, so it drives most of the cost</span>
+        </legend>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {claudeSteps.map((step) => (
+            <Field key={step} label={stepLabel(step)} htmlFor={`model-${step}`}>
+              <Select id={`model-${step}`} name={step} defaultValue={defaultStepModels[step] ?? "default"}>
+                {modelChoices.map((choice) => (
+                  <option key={choice} value={choice}>
+                    {modelLabel(choice)}
+                  </option>
+                ))}
+                <option value="default">{modelLabel(undefined)}</option>
+              </Select>
+            </Field>
+          ))}
+        </div>
+      </fieldset>
 
       <FormError message={state.error}/>
 

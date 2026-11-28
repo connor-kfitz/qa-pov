@@ -16,5 +16,9 @@ export type CaseStatus = TestCase["status"];
 export type Verdict = NonNullable<TestCase["verdict"]>;
 export type CaseCounts = Record<CaseStatus, number>;
 
+export type ClaudeStep = "planning" | "writing" | "repairing";
+export type ModelChoice = "opus" | "sonnet" | "haiku";
+export type StepModels = Partial<Record<ClaudeStep, ModelChoice>>;
+
 export type AppConfig = z.infer<typeof appConfigSchema>;
 export type RoleConfig = z.infer<typeof roleSchema>;
