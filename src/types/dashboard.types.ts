@@ -156,4 +156,4 @@ export interface ChoiceProps {
 
 export type Tone = "neutral" | "progress" | "success" | "danger" | "warning" | "info";
 
-export type StepState = "done" | "current" | "failed" | "blocked" | "pending";
+export type StepState = "done" | "current" | "failed" | "blocked" | "cancelled" | "pending";

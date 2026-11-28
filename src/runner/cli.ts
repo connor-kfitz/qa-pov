@@ -4,13 +4,14 @@ import path from "node:path";
 
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig } from "@/lib/app-config";
 import { claudeSteps, defaultStepModels, modelChoices, runSteps } from "@/lib/helpers";
 import { snapshotDir } from "@/lib/run-files";
 import { acquireRunLock, launchNextQueuedRun, releaseRunLock, requeueRun } from "@/lib/run-queue";
+import { killChildren } from "@/runner/children";
 import { plan } from "@/runner/plan";
 import { EnvProblemError, prepare, restoreSnapshot } from "@/runner/prepare";
 import { repair } from "@/runner/repair";
@@ -36,6 +37,8 @@ const { values } = parseArgs({
   }
 });
 
+const cancelCheckMs = 2000;
+
 async function main() {
   const from = values.from as RunStatus | undefined;
   if (from && !runSteps.some((step) => step === from)) throw new Error(`--from must be one of ${runSteps.join(", ")}`);
@@ -48,12 +51,14 @@ async function main() {
     return;
   }
 
-  const finish = async () => {
-    await rm(snapshotDir(runId), { recursive: true, force: true });
-    await releaseRunLock(lock);
-    const next = await launchNextQueuedRun();
-    if (next) console.log(`Launched queued run ${next}`);
-  }
+  let finishing: Promise<void> | null = null;
+  const finish = () =>
+    (finishing ??= (async () => {
+      await rm(snapshotDir(runId), { recursive: true, force: true });
+      await releaseRunLock(lock);
+      const next = await launchNextQueuedRun();
+      if (next) console.log(`Launched queued run ${next}`);
+    })());
 
   try {
     const claimed = await claimRun(runId);
@@ -114,7 +119,7 @@ async function queueExisting(id: string, from: RunStatus | undefined, holdsLock:
     return id;
   }
 
-  const retryable: RunStatus[] = holdsLock ? schema.runStatusEnum.enumValues : ["queued", "done", "failed", "blocked"];
+  const retryable: RunStatus[] = holdsLock ? schema.runStatusEnum.enumValues : ["queued", "done", "failed", "blocked", "cancelled"];
   if (!(await requeueRun(id, from, retryable))) throw new Error(`Run ${id} is ${run.status} in another runner; wait for it to finish`);
   return id;
 }
@@ -146,12 +151,17 @@ async function loadContext(runDir: string): Promise<RunContext | null> {
   return saved ? { ...JSON.parse(saved), diff: "" } : null;
 }
 
-async function execute(run: Run, from: RunStatus, onCrash: () => Promise<void>) {
+async function execute(run: Run, from: RunStatus, finish: () => Promise<void>) {
   const runDir = path.resolve("runs", run.id);
   await mkdir(path.join(runDir, "tests"), { recursive: true });
   console.log(`Run ${run.id} started (${run.scenario}, ${run.depth}${from === "preparing" ? "" : `, from ${from}`}) → ${runDir}`);
 
-  const setStatus = (status: RunStatus, error?: string) => db.update(schema.runs).set({ status, error: error ?? null }).where(eq(schema.runs.id, run.id));
+  const updateWhileActive = (values: Partial<typeof schema.runs.$inferInsert>) =>
+    db
+      .update(schema.runs)
+      .set(values)
+      .where(and(eq(schema.runs.id, run.id), inArray(schema.runs.status, [...runSteps])))
+      .returning({ id: schema.runs.id });
 
   const [appRow] = await db.select().from(schema.apps).where(eq(schema.apps.id, run.appId));
   const input = { run, app: await loadAppConfig(appRow.slug), runDir }
@@ -175,27 +185,47 @@ async function execute(run: Run, from: RunStatus, onCrash: () => Promise<void>) 
   let current: RunStatus = from;
   process.on("uncaughtException", async (err) => {
     console.error(err);
-    await db.update(schema.runs).set({ status: "failed", error: `${current}: ${err.message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id)).catch(() => {});
-    await onCrash().catch(() => {});
+    await updateWhileActive({ status: "failed", error: `${current}: ${err.message}`, finishedAt: new Date() }).catch(() => {});
+    await finish().catch(() => {});
     process.exit(1);
   });
 
-  for (const [status, step] of steps.slice(start)) {
-    current = status;
-    await setStatus(status);
-    console.log(`${new Date().toISOString()} ${status}`);
-    try {
-      await step();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const finalStatus = err instanceof EnvProblemError ? "blocked" : "failed";
-      await db.update(schema.runs).set({ status: finalStatus, error: `${status}: ${message}`, finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
-      throw err;
-    }
-  }
+  const watcher = setInterval(async () => {
+    const [row] = await db.select({ status: schema.runs.status }).from(schema.runs).where(eq(schema.runs.id, run.id)).catch(() => []);
+    if (row?.status !== "cancelled") return;
+    clearInterval(watcher);
+    console.log(`${new Date().toISOString()} cancelled from the dashboard while ${current}`);
+    killChildren();
+    await finish().catch(() => {});
+    process.exit(0);
+  }, cancelCheckMs);
 
-  await db.update(schema.runs).set({ status: "done", finishedAt: new Date() }).where(eq(schema.runs.id, run.id));
-  console.log(`Run ${run.id} done`);
+  try {
+    for (const [status, step] of steps.slice(start)) {
+      current = status;
+      if ((await updateWhileActive({ status, error: null })).length === 0) {
+        console.log(`Run ${run.id} was cancelled before ${status}`);
+        return;
+      }
+      console.log(`${new Date().toISOString()} ${status}`);
+      try {
+        await step();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const finalStatus = err instanceof EnvProblemError ? "blocked" : "failed";
+        if ((await updateWhileActive({ status: finalStatus, error: `${status}: ${message}`, finishedAt: new Date() })).length === 0) {
+          console.log(`Run ${run.id} was cancelled during ${status}`);
+          return;
+        }
+        throw err;
+      }
+    }
+
+    await updateWhileActive({ status: "done", finishedAt: new Date() });
+    console.log(`Run ${run.id} done`);
+  } finally {
+    clearInterval(watcher);
+  }
 }
 
 main()

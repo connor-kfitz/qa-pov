@@ -10,7 +10,7 @@ import { updateEnvFile } from "@/lib/env-file";
 import { claudeSteps, modelChoices, retrySteps, runSteps, slugify, stepLabel } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
 import { buildAppConfig, parseProjectForm, secretUpdates } from "@/lib/project-input";
-import { requeueRun } from "@/lib/run-queue";
+import { launchNextQueuedRun, markRunCancelled, requeueRun } from "@/lib/run-queue";
 import { getRun } from "@/lib/runs";
 import type { FormState, ProjectInput } from "@/types/dashboard.types";
 import type { AppConfig, StepModels } from "@/types/shared.types";
@@ -75,9 +75,25 @@ export async function retryRun(_prev: FormState, formData: FormData): Promise<Fo
   const found = await getRun(runId);
   if (!found) return { error: "This run no longer exists." };
   if (!retrySteps(found.run).includes(from)) return { error: `This run can't be retried from ${stepLabel(from)}.` };
-  if (!(await requeueRun(runId, from, ["failed", "blocked"]))) return { error: "This run is already being retried." };
+  if (!(await requeueRun(runId, from, ["failed", "blocked", "cancelled"]))) return { error: "This run is already being retried." };
 
   launchRunner(runId);
+  revalidatePath("/", "layout");
+  return {}
+}
+
+const cancelRunSchema = z.object({
+  runId: z.uuid()
+});
+
+export async function cancelRun(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = cancelRunSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Pick a run to cancel." };
+
+  const cancelled = await markRunCancelled(parsed.data.runId);
+  if (!cancelled) return { error: "This run already finished." };
+  if (cancelled.wasRunning) await launchNextQueuedRun();
+
   revalidatePath("/", "layout");
   return {}
 }

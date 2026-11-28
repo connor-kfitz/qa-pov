@@ -151,8 +151,14 @@ export function failedStep(run: Run) {
   return runSteps.find((step) => step === prefix) ?? null;
 }
 
+const stoppedStatuses: RunStatus[] = ["failed", "blocked", "cancelled"];
+
+export function isStopped(status: RunStatus) {
+  return stoppedStatuses.includes(status);
+}
+
 export function retrySteps(run: Run): RunStatus[] {
-  if (run.status !== "failed" && run.status !== "blocked") return [];
+  if (!isStopped(run.status)) return [];
   const stopped = runSteps.findIndex((step) => step === failedStep(run));
   return stopped === -1 ? [...runSteps] : runSteps.slice(0, stopped + 1);
 }
@@ -168,7 +174,7 @@ export function stepStates(run: Run): StepState[] {
 
   const stopped = runSteps.findIndex((step) => step === failedStep(run));
   if (stopped === -1) return runSteps.map(() => "pending");
-  const stoppedState = run.status === "blocked" ? "blocked" : "failed";
+  const stoppedState = run.status === "blocked" || run.status === "cancelled" ? run.status : "failed";
   return runSteps.map((_, i) => (i < stopped ? "done" : i === stopped ? stoppedState : "pending"));
 }
 

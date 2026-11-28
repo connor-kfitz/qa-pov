@@ -7,6 +7,7 @@ const stateClasses: Record<StepState, { dot: string; text: string }> = {
   current: { dot: "animate-pulse bg-sky-500 ring-sky-500", text: "font-medium text-sky-700 dark:text-sky-300" },
   failed: { dot: "bg-red-500 ring-red-500", text: "font-medium text-red-700 dark:text-red-300" },
   blocked: { dot: "bg-amber-500 ring-amber-500", text: "font-medium text-amber-800 dark:text-amber-300" },
+  cancelled: { dot: "bg-zinc-400 ring-zinc-400 dark:bg-zinc-500 dark:ring-zinc-500", text: "font-medium text-muted" },
   pending: { dot: "bg-transparent ring-line", text: "text-subtle" }
 }
 

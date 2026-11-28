@@ -1,6 +1,7 @@
 import { Client } from "pg";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { runSteps } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
 import type { RunStatus } from "@/types/shared.types";
 
@@ -26,6 +27,15 @@ export async function requeueRun(id: string, from: RunStatus, onlyIf: RunStatus[
     .where(and(eq(schema.runs.id, id), inArray(schema.runs.status, onlyIf)))
     .returning({ id: schema.runs.id });
   return updated.length > 0;
+}
+
+export async function markRunCancelled(id: string) {
+  const [cancelled] = await db
+    .update(schema.runs)
+    .set({ status: "cancelled", error: sql`${schema.runs.status}::text || ': Cancelled from the dashboard'`, finishedAt: new Date() })
+    .where(and(eq(schema.runs.id, id), inArray(schema.runs.status, ["queued", ...runSteps])))
+    .returning({ error: schema.runs.error });
+  return cancelled ? { wasRunning: !cancelled.error?.startsWith("queued:") } : null;
 }
 
 export async function launchNextQueuedRun() {

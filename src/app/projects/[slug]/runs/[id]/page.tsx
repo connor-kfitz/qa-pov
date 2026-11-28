@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CancelRunForm } from "@/components/cancel-run-form";
 import { CaseSummary } from "@/components/case-summary";
 import { PageHeader, Section, Skeleton, panelClass } from "@/components/page-header";
 import { RetryRunForm } from "@/components/retry-run-form";
@@ -50,6 +51,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         aside={
           <>
             {active && <AutoRefresh/>}
+            {active && <CancelRunForm runId={run.id} running={run.status !== "queued"}/>}
             <RunStatusBadge status={run.status}/>
           </>
         }
@@ -146,6 +148,11 @@ function RunAlerts({ run, activeRun, keptCases }: { run: Run; activeRun: { run: 
       {run.status === "blocked" && run.error && (
         <Alert tone="warning" title={`Blocked${stoppedAt ? ` while ${stoppedAt}` : ""}`} action={retry}>
           {stripStepPrefix(run.error)}
+        </Alert>
+      )}
+      {run.status === "cancelled" && (
+        <Alert tone="info" title={`Cancelled${stoppedAt ? ` while ${stoppedAt}` : ""}`} action={retry}>
+          Stopped from the dashboard. Claude calls that finished before the cancel are still billed.
         </Alert>
       )}
       {run.status === "failed" && run.error && (

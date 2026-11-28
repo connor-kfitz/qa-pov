@@ -29,7 +29,8 @@ const runStatuses: Record<RunStatus, [string, Tone]> = {
   saving: ["Saving", "progress"],
   done: ["Done", "success"],
   failed: ["Failed", "danger"],
-  blocked: ["Blocked", "warning"]
+  blocked: ["Blocked", "warning"],
+  cancelled: ["Cancelled", "neutral"]
 }
 
 const caseStatuses: Record<CaseStatus, [string, Tone]> = {

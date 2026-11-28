@@ -3,7 +3,7 @@ import type { StepModels } from "@/types/shared.types";
 
 export const scenarioEnum = pgEnum("scenario", ["codebase", "feature"]);
 export const depthEnum = pgEnum("depth", ["base", "base_edge"]);
-export const runStatusEnum = pgEnum("run_status", ["queued", "preparing", "planning", "writing", "running", "repairing", "saving", "done", "failed", "blocked"]);
+export const runStatusEnum = pgEnum("run_status", ["queued", "preparing", "planning", "writing", "running", "repairing", "saving", "done", "failed", "blocked", "cancelled"]);
 export const caseKindEnum = pgEnum("case_kind", ["base", "edge"]);
 export const caseStatusEnum = pgEnum("case_status", ["planned", "written", "passed", "failed", "flaky", "skipped"]);
 export const verdictEnum = pgEnum("verdict", ["app_bug", "bad_test", "env_problem"]);

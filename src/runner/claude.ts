@@ -1,6 +1,7 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { db, schema } from "@/db";
 import { primaryModel } from "@/lib/helpers";
+import { killTree, trackChild } from "@/runner/children";
 import type { ClaudeCallTag, ClaudeOptions, ClaudeResult, ClaudeUsage } from "@/types/runner.types";
 
 export class ClaudeError extends Error {
@@ -43,7 +44,7 @@ function runClaude(prompt: string, opts: ClaudeOptions = {}): Promise<ClaudeResu
   if (opts.allowedTools?.length) args.push("--allowedTools", opts.allowedTools.join(","));
 
   return new Promise((resolve, reject) => {
-    const child = spawn("claude", args, { cwd: opts.cwd, env: { ...process.env, ...opts.env } });
+    const child = trackChild(spawn("claude", args, { cwd: opts.cwd, env: { ...process.env, ...opts.env } }));
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -78,10 +79,4 @@ function parseOutput(stdout: string) {
   } catch {
     return null;
   }
-}
-
-function killTree(pid: number | undefined) {
-  if (!pid) return;
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(pid), "/t", "/f"]);
-  else process.kill(pid, "SIGTERM");
 }
