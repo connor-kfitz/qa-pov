@@ -2,16 +2,17 @@ import "dotenv/config";
 
 import path from "node:path";
 
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig } from "@/lib/app-config";
 import { runSteps } from "@/lib/helpers";
+import { snapshotDir } from "@/lib/run-files";
 import { acquireRunLock, launchNextQueuedRun, releaseRunLock, requeueRun } from "@/lib/run-queue";
 import { plan } from "@/runner/plan";
-import { EnvProblemError, prepare } from "@/runner/prepare";
+import { EnvProblemError, prepare, restoreSnapshot } from "@/runner/prepare";
 import { repair } from "@/runner/repair";
 import { runTests } from "@/runner/run";
 import { save } from "@/runner/save";
@@ -45,6 +46,7 @@ async function main() {
   }
 
   const finish = async () => {
+    await rm(snapshotDir(runId), { recursive: true, force: true });
     await releaseRunLock(lock);
     const next = await launchNextQueuedRun();
     if (next) console.log(`Launched queued run ${next}`);
@@ -136,6 +138,7 @@ async function execute(run: Run, from: RunStatus, onCrash: () => Promise<void>) 
   const [appRow] = await db.select().from(schema.apps).where(eq(schema.apps.id, run.appId));
   const input = { run, app: await loadAppConfig(appRow.slug), runDir }
   let context: RunContext | null = from === "preparing" ? null : await loadContext(runDir);
+  if (context && (from === "planning" || from === "writing")) await restoreSnapshot(input.app, context, runDir);
 
   const steps: [RunStatus, () => Promise<void>][] = [
     ["preparing", async () => {

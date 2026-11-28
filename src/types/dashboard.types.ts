@@ -23,6 +23,11 @@ export interface ProjectRun {
 
 export type StepCosts = Partial<Record<RunStatus, number>>;
 
+export interface DiffLine {
+  kind: "hunk" | "add" | "remove" | "context";
+  text: string;
+}
+
 export interface RunGroup {
   key: string;
   label: string;

@@ -1,12 +1,13 @@
-import os from "node:os";
 import path from "node:path";
 
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { bypassSecret } from "@/lib/app-config";
 import { diffSummary, exportSnapshot, fetchOrigin, isAncestor, resolveRef } from "@/lib/git";
 import { shortSha, truncate } from "@/lib/helpers";
+import { snapshotDir } from "@/lib/run-files";
 import type { AppConfig } from "@/types/shared.types";
 import type { RunContext, StepInput } from "@/types/runner.types";
 
@@ -34,9 +35,8 @@ export async function prepare({ run, app, runDir }: StepInput): Promise<RunConte
     if (!(await isAncestor(app.repoPath, head.sha, deployed.sha))) console.log(`Warning: ${head.label} isn't merged into ${deployed.label}, so the live env may not have it yet`);
   }
 
-  const codeDir = path.join(os.tmpdir(), "qa-pov", run.id, "code");
-  await rm(codeDir, { recursive: true, force: true });
-  await exportSnapshot(app.repoPath, head.sha, codeDir);
+  const codeDir = path.join(snapshotDir(run.id), "code");
+  await writeSnapshot(app, head.sha, codeDir, diff.patch);
   console.log(`Code for ${shortSha(head.sha)} exported to ${codeDir}`);
 
   const shown = truncate(diff.patch, maxDiffChars);
@@ -53,13 +53,23 @@ export async function prepare({ run, app, runDir }: StepInput): Promise<RunConte
   }
 
   await mkdir(runDir, { recursive: true });
-  if (diff.patch) {
-    await writeFile(path.join(runDir, "diff.patch"), diff.patch);
-    await writeFile(path.join(codeDir, ".qa-pov-diff.patch"), diff.patch);
-  }
+  if (diff.patch) await writeFile(path.join(runDir, "diff.patch"), diff.patch);
   await writeFile(path.join(runDir, "context.json"), `${JSON.stringify({ ...context, diff: undefined }, null, 2)}\n`);
   await db.update(schema.runs).set({ deployedCommitStart: deployed.sha }).where(eq(schema.runs.id, run.id));
   return context;
+}
+
+export async function restoreSnapshot(app: AppConfig, context: RunContext, runDir: string) {
+  if (existsSync(context.codeDir)) return;
+  const patch = await readFile(path.join(runDir, "diff.patch"), "utf8").catch(() => "");
+  await writeSnapshot(app, context.head.sha, context.codeDir, patch);
+  console.log(`Code for ${shortSha(context.head.sha)} restored to ${context.codeDir}`);
+}
+
+async function writeSnapshot(app: AppConfig, sha: string, codeDir: string, patch: string) {
+  await rm(codeDir, { recursive: true, force: true });
+  await exportSnapshot(app.repoPath, sha, codeDir);
+  if (patch) await writeFile(path.join(codeDir, ".qa-pov-diff.patch"), patch);
 }
 
 async function checkEnv(app: AppConfig) {

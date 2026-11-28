@@ -6,7 +6,7 @@ import { db, schema } from "@/db";
 import { diffFiles } from "@/lib/git";
 import { flattenReport, parseAnswer, pluralize, toPosix, truncate } from "@/lib/helpers";
 import { playwrightReportSchema, repairReportSchema } from "@/lib/plan-schema";
-import { toRunRelativePath } from "@/lib/run-files";
+import { repairDiffPath } from "@/lib/run-files";
 import { askClaude } from "@/runner/claude";
 import { runPlaywright } from "@/runner/playwright";
 import { EnvProblemError } from "@/runner/prepare";
@@ -93,7 +93,7 @@ export async function repair({ run, app, runDir }: StepInput) {
       console.log(`${target.file}: repair removed assertions, reverted`);
       continue;
     }
-    await writeFile(path.join(repairDir, `${target.file}.diff`), await diffFiles(original, current));
+    await writeFile(repairDiffPath(run.id, target.file), await diffFiles(original, current));
     changed.push(target.file);
   }
 
@@ -106,10 +106,9 @@ export async function repair({ run, app, runDir }: StepInput) {
     const retried = rerun.find((reported) => path.basename(reported.file) === target.file);
     const testCase = failed.find((row) => row.id === target.caseId)!;
     const baseNotes = (testCase.notes ?? "").split(/\n\nRepair:/)[0];
-    const diffNote = changed.includes(target.file) ? ` Changes: ${toRunRelativePath(path.join(repairDir, `${target.file}.diff`))}` : "";
 
     if (retried && (retried.status === "passed" || retried.status === "flaky")) {
-      const notes = `${baseNotes.split(/\n\nFailure:/)[0]}\n\nRepair: the test was wrong and was fixed; it passes on re-run. ${verdict?.notes ?? ""}${diffNote}`;
+      const notes = `${baseNotes.split(/\n\nFailure:/)[0]}\n\nRepair: the test was wrong and was fixed; it passes on re-run. ${verdict?.notes ?? ""}`;
       await db.update(schema.testCases).set({ status: retried.status, verdict: "bad_test", durationMs: Math.round(retried.durationMs), notes: notes.trim() }).where(eq(schema.testCases.id, target.caseId));
       await replaceArtifacts(run.id, target.caseId, retried);
       continue;
@@ -119,7 +118,7 @@ export async function repair({ run, app, runDir }: StepInput) {
     if (verdict?.verdict === "env_problem") envProblems += 1;
     const revertNote = reverted.has(target.file) ? " The attempted fix removed assertions, so it was reverted." : "";
     const label = verdict ? verdict.verdict.replace("_", " ") : "no verdict";
-    const notes = `${baseNotes}\n\nRepair (${label}): ${verdict?.notes ?? "Claude didn't report on this test."}${revertNote}${diffNote}`;
+    const notes = `${baseNotes}\n\nRepair (${label}): ${verdict?.notes ?? "Claude didn't report on this test."}${revertNote}`;
     await db.update(schema.testCases).set({ verdict: verdict?.verdict ?? null, notes: notes.trim() }).where(eq(schema.testCases.id, target.caseId));
   }
 

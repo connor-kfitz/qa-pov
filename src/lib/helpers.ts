@@ -1,7 +1,7 @@
 import { caseStatusEnum } from "@/db/schema";
 import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
-import type { ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
+import type { DiffLine, ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
 import type { CaseCounts, ClaudeCall, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
 
@@ -59,6 +59,16 @@ export function costByStep(calls: ClaudeCall[]) {
 
 export function pluralize(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+export function parseDiff(diff: string): DiffLine[] {
+  const lines = diff.replace(/\r\n/g, "\n").trimEnd().split("\n");
+  const firstHunk = lines.findIndex((line) => line.startsWith("@@"));
+  if (firstHunk === -1) return [];
+  return lines
+    .slice(firstHunk)
+    .filter((line) => !line.startsWith("\\ No newline"))
+    .map((line) => ({ kind: line.startsWith("@@") ? "hunk" : line.startsWith("+") ? "add" : line.startsWith("-") ? "remove" : "context", text: line }));
 }
 
 export function formatCost(usd: number) {

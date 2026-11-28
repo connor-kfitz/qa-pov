@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PageHeader, Section, Skeleton } from "@/components/page-header";
 import { CaseStatusBadge, VerdictBadge, verdictDescriptions } from "@/components/status-badge";
-import { formatDuration, scenarioTitle, shortId } from "@/lib/helpers";
-import { readRunFile } from "@/lib/run-files";
+import { formatDuration, parseDiff, pluralize, scenarioTitle, shortId } from "@/lib/helpers";
+import { readRunFile, repairDiffPath } from "@/lib/run-files";
 import { getCase, getRun } from "@/lib/runs";
+import type { DiffLine } from "@/types/dashboard.types";
 import type { Artifact } from "@/types/shared.types";
 
 export default function TestPage({ params }: PageProps<"/projects/[slug]/runs/[id]/tests/[testId]">) {
@@ -26,7 +27,8 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
 
   const { run, app } = found;
   const { testCase, artifacts } = detail;
-  const spec = testCase.specPath ? await readRunFile(testCase.specPath) : null;
+  const [spec, repairDiff] = testCase.specPath ? await Promise.all([readRunFile(testCase.specPath), readRunFile(repairDiffPath(run.id, path.basename(testCase.specPath)))]) : [null, null];
+  const repairChanges = repairDiff ? parseDiff(repairDiff) : [];
   const videos = artifacts.filter((artifact) => artifact.type === "video");
   const screenshots = artifacts.filter((artifact) => artifact.type === "screenshot");
   const traces = artifacts.filter((artifact) => artifact.type === "trace");
@@ -57,6 +59,8 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
           {testCase.notes && <p className="mt-2 whitespace-pre-line">{testCase.notes}</p>}
         </div>
       )}
+
+      {repairChanges.length > 0 && <RepairChanges lines={repairChanges} />}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="flex flex-col gap-8">
@@ -101,6 +105,32 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
         {spec !== null ? <pre className="overflow-auto rounded-lg border bg-panel p-4 font-mono text-xs leading-relaxed">{spec}</pre> : <Empty>{testCase.status === "planned" ? "Not written yet." : "Spec file not found."}</Empty>}
       </Section>
     </>
+  );
+}
+
+const diffLineClasses: Record<DiffLine["kind"], string> = {
+  hunk: "text-sky-700 dark:text-sky-300",
+  add: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+  remove: "bg-red-500/10 text-red-800 dark:text-red-300",
+  context: ""
+}
+
+function RepairChanges({ lines }: { lines: DiffLine[] }) {
+  const added = lines.filter((line) => line.kind === "add").length;
+  const removed = lines.filter((line) => line.kind === "remove").length;
+
+  return (
+    <Section title="Repair changes" aside={<span className="text-xs text-muted tabular-nums">{`${pluralize(added, "line")} added, ${removed} removed`}</span>}>
+      <pre className="overflow-auto rounded-lg border bg-panel py-3 font-mono text-xs leading-relaxed">
+        <div className="min-w-max">
+          {lines.map((line, i) => (
+            <span key={i} className={`block px-4 ${diffLineClasses[line.kind]}`}>
+              {line.text || " "}
+            </span>
+          ))}
+        </div>
+      </pre>
+    </Section>
   );
 }
 

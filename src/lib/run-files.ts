@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 
 import { readFile } from "node:fs/promises";
@@ -11,6 +12,14 @@ export function runDir(runId: string) {
 
 export function runLogPath(runId: string) {
   return path.join(runDir(runId), "runner.log");
+}
+
+export function snapshotDir(runId: string) {
+  return path.join(os.tmpdir(), "qa-pov", runId);
+}
+
+export function repairDiffPath(runId: string, specFile: string) {
+  return path.join(runDir(runId), "repair", `${specFile}.diff`);
 }
 
 export function toRunRelativePath(absolutePath: string) {
