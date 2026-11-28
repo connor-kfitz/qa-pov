@@ -26,6 +26,7 @@ export const runs = pgTable("runs", {
   scenario: scenarioEnum("scenario").notNull(),
   depth: depthEnum("depth").notNull().default("base"),
   maxTests: integer("max_tests"),
+  foundCases: integer("found_cases"),
   models: jsonb("models").$type<StepModels>().notNull().default({}),
   compareRef: text("compare_ref"),
   featureRef: text("feature_ref"),

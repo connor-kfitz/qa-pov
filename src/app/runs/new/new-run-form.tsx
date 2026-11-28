@@ -5,22 +5,24 @@ import { Choice, Field, FormError, Select, inputClass } from "@/components/form"
 import { buttonClass } from "@/components/page-header";
 import { RefCombobox } from "@/components/ref-combobox";
 import { startRun } from "@/app/actions";
-import { claudeSteps, defaultStepModels, modelChoices, modelLabel, stepLabel } from "@/lib/helpers";
-import type { AppOption, FormState } from "@/types/dashboard.types";
+import { claudeSteps, defaultMaxTests, defaultStepModels, draftFromForm, estimateRun, formatCost, modelChoices, modelLabel, pluralize, stepLabel } from "@/lib/helpers";
+import type { AppOption, FormState, RunCostSample, RunDraft, RunEstimate } from "@/types/dashboard.types";
 import type { Scenario } from "@/types/shared.types";
 
-export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp?: string }) {
+export function NewRunForm({ apps, initialApp, costSamples }: { apps: AppOption[]; initialApp?: string; costSamples: RunCostSample[] }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(startRun, {});
   const [appSlug, setAppSlug] = useState(apps.find((option) => option.slug === initialApp)?.slug ?? apps[0]?.slug ?? "");
   const [scenario, setScenario] = useState<Scenario>("codebase");
+  const [draft, setDraft] = useState<Pick<RunDraft, "depth" | "maxTests" | "models">>({ depth: "base", maxTests: null, models: defaultStepModels });
   const app = apps.find((option) => option.slug === appSlug);
+  const estimate = estimateRun(costSamples, { app: appSlug, scenario, ...draft });
 
   if (apps.length === 0) {
     return <p className="text-sm text-muted">No projects yet. Add one first.</p>;
   }
 
   return (
-    <form action={formAction} className="flex max-w-2xl flex-col gap-8">
+    <form action={formAction} onChange={(event) => setDraft(draftFromForm(new FormData(event.currentTarget)))} className="flex max-w-2xl flex-col gap-8">
       <Field label="Project" htmlFor="app">
         <Select id="app" name="app" value={appSlug} onChange={(event) => setAppSlug(event.target.value)}>
           {apps.map((option) => (
@@ -71,8 +73,8 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
         </div>
       </fieldset>
 
-      <Field label="Max tests" htmlFor="maxTests" hint="Claude ranks cases by risk and keeps the top N">
-        <input id="maxTests" name="maxTests" type="number" min={1} max={100} placeholder="No limit" className={`${inputClass} sm:max-w-40`}/>
+      <Field label="Max tests" htmlFor="maxTests" hint={`Claude ranks cases by risk and keeps the top N (default ${defaultMaxTests})`}>
+        <input id="maxTests" name="maxTests" type="number" min={1} max={100} placeholder={String(defaultMaxTests)} className={`${inputClass} sm:max-w-40`}/>
       </Field>
 
       <fieldset className="flex flex-col gap-2">
@@ -95,6 +97,8 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
           ))}
         </div>
       </fieldset>
+
+      <EstimateNote estimate={estimate}/>
 
       <FormError message={state.error}/>
 
@@ -122,5 +126,25 @@ function BranchPicker({ id, app }: { id: string; app?: AppOption }) {
         </option>
       ))}
     </Select>
+  );
+}
+
+function EstimateNote({ estimate }: { estimate: RunEstimate }) {
+  const tests = `${estimate.testsFromHistory ? "About" : "Up to"} ${pluralize(estimate.tests, "test")}`;
+  const source = `${pluralize(estimate.sampleRuns, "past run")} ${estimate.sameProject ? "of this project" : "across all projects"}`;
+
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border bg-panel px-4 py-3 text-sm">
+      <p className="font-medium">
+        {tests}
+        {estimate.costUsd !== null && <span className="tabular-nums"> · roughly {formatCost(estimate.costUsd)}</span>}
+      </p>
+      <p className="text-xs text-muted">
+        {estimate.costUsd === null
+          ? "No finished runs with cost data yet, so there's no cost estimate."
+          : `Based on ${source}.${estimate.modelsMatched ? "" : " None used these exact models, so treat the cost as a loose guide."}`}
+        {!estimate.testsFromHistory && " Claude plans up to the max; the real count is often lower."}
+      </p>
+    </div>
   );
 }

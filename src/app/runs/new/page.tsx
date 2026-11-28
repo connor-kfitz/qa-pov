@@ -6,7 +6,7 @@ import { PageHeader, Skeleton } from "@/components/page-header";
 import { listAppConfigs } from "@/lib/app-config";
 import { listBranches, listRecentCommits } from "@/lib/git";
 import { shortId } from "@/lib/helpers";
-import { getActiveRun } from "@/lib/runs";
+import { getActiveRun, listCostSamples } from "@/lib/runs";
 import { NewRunForm } from "./new-run-form";
 
 export default function NewRunPage({ searchParams }: PageProps<"/runs/new">) {
@@ -27,7 +27,7 @@ export default function NewRunPage({ searchParams }: PageProps<"/runs/new">) {
 async function NewRunLoader({ searchParams }: { searchParams: PageProps<"/runs/new">["searchParams"] }) {
   const { app } = await searchParams;
   await connection();
-  const [apps, activeRun] = await Promise.all([listAppConfigs(), getActiveRun()]);
+  const [apps, activeRun, costSamples] = await Promise.all([listAppConfigs(), getActiveRun(), listCostSamples()]);
   const options = await Promise.all(
     apps.map(async (config) => ({
       slug: config.slug,
@@ -49,7 +49,7 @@ async function NewRunLoader({ searchParams }: { searchParams: PageProps<"/runs/n
           ({activeRun.app.name}) is in progress. A new run is queued and starts when it finishes.
         </p>
       )}
-      <NewRunForm apps={options} initialApp={typeof app === "string" ? app : undefined}/>
+      <NewRunForm apps={options} initialApp={typeof app === "string" ? app : undefined} costSamples={costSamples}/>
     </>
   );
 }

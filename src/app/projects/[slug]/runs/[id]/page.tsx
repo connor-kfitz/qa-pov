@@ -9,7 +9,7 @@ import { PageHeader, Section, Skeleton, panelClass } from "@/components/page-hea
 import { RetryRunForm } from "@/components/retry-run-form";
 import { RunSteps } from "@/components/run-steps";
 import { CaseStatusBadge, RunStatusBadge, VerdictBadge } from "@/components/status-badge";
-import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, retrySteps, runDuration, scenarioDetail, stepModelsLabel, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
+import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, maxTestsLabel, pluralize, retrySteps, runDuration, scenarioDetail, stepModelsLabel, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
 import { readRunLog } from "@/lib/run-files";
 import { getActiveRun, getRun, listCases, listClaudeCalls } from "@/lib/runs";
 import type { App, ClaudeCall, Run, TestCase } from "@/types/shared.types";
@@ -59,7 +59,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         <RunSteps run={run} costs={costByStep(calls)}/>
       </div>
 
-      <RunAlerts run={run} activeRun={activeRun}/>
+      <RunAlerts run={run} activeRun={activeRun} keptCases={cases.length}/>
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-4">
         <Fact label="Env">
@@ -68,7 +68,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
           </a>
         </Fact>
         <Fact label="Deployed commit">{deployedCommitLabel(run) ? <span className="font-mono">{deployedCommitLabel(run)}</span> : "—"}</Fact>
-        <Fact label="Max tests">{run.maxTests ?? "No limit"}</Fact>
+        <Fact label="Max tests">{maxTestsLabel(run.maxTests)}</Fact>
         <Fact label="Models">{stepModelsLabel(run.models)}</Fact>
         <Fact label="Run id">
           <span className="font-mono" title={run.id}>
@@ -111,7 +111,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
   );
 }
 
-function RunAlerts({ run, activeRun }: { run: Run; activeRun: { run: Run; app: App } | null }) {
+function RunAlerts({ run, activeRun, keptCases }: { run: Run; activeRun: { run: Run; app: App } | null; keptCases: number }) {
   const stoppedAt = failedStep(run);
   const retryFrom = retrySteps(run);
   const retry = retryFrom.length > 0 && <RetryRunForm runId={run.id} steps={retryFrom}/>;
@@ -131,6 +131,11 @@ function RunAlerts({ run, activeRun }: { run: Run; activeRun: { run: Run; app: A
           ) : (
             "Starting now."
           )}
+        </Alert>
+      )}
+      {run.foundCases !== null && run.foundCases > keptCases && keptCases > 0 && (
+        <Alert tone="info" title={`Claude found ${pluralize(run.foundCases, "case")} and kept ${keptCases}`}>
+          Max tests is {maxTestsLabel(run.maxTests)}, so the plan kept the top {keptCases} by risk and dropped {run.foundCases - keptCases}. Raise Max tests on the next run to keep more.
         </Alert>
       )}
       {run.envChanged && (

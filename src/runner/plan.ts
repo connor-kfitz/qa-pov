@@ -3,12 +3,11 @@ import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { parsePlan } from "@/lib/helpers";
+import { defaultMaxTests, parsePlan } from "@/lib/helpers";
 import { askClaude } from "@/runner/claude";
 import { buildPlanPrompt, buildPlanRetryPrompt } from "@/runner/prompts";
 import type { RunContext, StepInput } from "@/types/runner.types";
 
-const defaultMaxTests = 25;
 const planTimeoutMs = 15 * 60_000;
 
 export async function plan({ run, app, runDir }: StepInput, context: RunContext) {
@@ -41,7 +40,7 @@ export async function plan({ run, app, runDir }: StepInput, context: RunContext)
   await db.transaction(async (tx) => {
     await tx.delete(schema.testCases).where(eq(schema.testCases.runId, run.id));
     await tx.insert(schema.testCases).values(cases.map((testCase) => ({ runId: run.id, ...testCase, status: "planned" as const })));
-    await tx.update(schema.runs).set({ plan: { cases } }).where(eq(schema.runs.id, run.id));
+    await tx.update(schema.runs).set({ plan: { cases }, foundCases: parsed.plan.cases.length }).where(eq(schema.runs.id, run.id));
   });
   console.log(`Planned ${cases.length} cases`);
 }

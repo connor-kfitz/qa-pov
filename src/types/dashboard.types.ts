@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { z } from "zod";
 import type { projectInputSchema } from "@/lib/project-input";
-import type { App, AppConfig, Run, RunStatus, Scenario, TestCase } from "@/types/shared.types";
+import type { App, AppConfig, ClaudeStep, Depth, Run, RunStatus, Scenario, StepModels, TestCase } from "@/types/shared.types";
 
 export interface FormState {
   error?: string;
@@ -78,6 +78,32 @@ export interface AppOption {
   roles: string[];
   branches: string[];
   commits: CommitOption[];
+}
+
+export interface RunCostSample {
+  app: string;
+  scenario: Scenario;
+  depth: Depth;
+  tests: number;
+  models: StepModels;
+  costs: Partial<Record<ClaudeStep, number>>;
+}
+
+export interface RunDraft {
+  app: string;
+  scenario: Scenario;
+  depth: Depth;
+  maxTests: number | null;
+  models: StepModels;
+}
+
+export interface RunEstimate {
+  tests: number;
+  testsFromHistory: boolean;
+  costUsd: number | null;
+  sampleRuns: number;
+  sameProject: boolean;
+  modelsMatched: boolean;
 }
 
 export type RefSuggestion = { kind: "branch"; value: string; name: string } | { kind: "commit"; value: string; commit: CommitOption };

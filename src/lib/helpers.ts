@@ -1,7 +1,7 @@
 import { caseStatusEnum } from "@/db/schema";
 import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
-import type { CommitOption, DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RefSuggestion, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
+import type { CommitOption, DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RefSuggestion, RunCostSample, RunDraft, RunEstimate, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
 import type { CaseCounts, ClaudeCall, ClaudeStep, Depth, ModelChoice, RoleConfig, Run, RunScope, RunStatus, StepModels, TestCase } from "@/types/shared.types";
 
@@ -9,6 +9,7 @@ export const runSteps = ["preparing", "planning", "writing", "running", "repairi
 export const claudeSteps = ["planning", "writing", "repairing"] as const satisfies ClaudeStep[];
 export const modelChoices = ["opus", "sonnet", "haiku"] as const satisfies ModelChoice[];
 export const defaultStepModels: StepModels = { planning: "opus", writing: "sonnet", repairing: "opus" }
+export const defaultMaxTests = 25;
 
 const modelLabels: Record<ModelChoice, string> = {
   opus: "Opus",
@@ -74,6 +75,46 @@ export function primaryModel(modelUsage: unknown) {
   const entries = Object.entries(modelUsage as Record<string, { costUSD?: number }>);
   entries.sort(([, a], [, b]) => (b.costUSD ?? 0) - (a.costUSD ?? 0));
   return entries[0]?.[0];
+}
+
+export function maxTestsLabel(maxTests: number | null) {
+  return maxTests === null ? `${defaultMaxTests} (default)` : String(maxTests);
+}
+
+export function draftFromForm(form: FormData): Pick<RunDraft, "depth" | "maxTests" | "models"> {
+  const maxTests = Number(form.get("maxTests"));
+  const models: StepModels = {}
+  for (const step of claudeSteps) {
+    const choice = modelChoices.find((model) => model === form.get(step));
+    if (choice) models[step] = choice;
+  }
+  return { depth: form.get("depth") === "base_edge" ? "base_edge" : "base", maxTests: Number.isInteger(maxTests) && maxTests > 0 ? maxTests : null, models }
+}
+
+export function estimateRun(samples: RunCostSample[], draft: RunDraft): RunEstimate {
+  const sameProject = samples.filter((sample) => sample.app === draft.app);
+  const pool = sameProject.length > 0 ? sameProject : samples;
+  const similar = pool.filter((sample) => sample.scenario === draft.scenario && sample.depth === draft.depth);
+  const cap = draft.maxTests ?? defaultMaxTests;
+  const typical = similar.length > 0 ? Math.round(sumOf(similar, (sample) => sample.tests) / similar.length) : null;
+  const tests = typical === null ? cap : Math.min(typical, cap);
+  const basis = { tests, testsFromHistory: typical !== null, sampleRuns: pool.length, sameProject: sameProject.length > 0 }
+  if (pool.length === 0) return { ...basis, costUsd: null, modelsMatched: false }
+
+  let costUsd = 0;
+  let modelsMatched = true;
+  for (const step of claudeSteps) {
+    const matching = pool.filter((sample) => sample.models[step] === draft.models[step]);
+    if (matching.length === 0) modelsMatched = false;
+    const runs = matching.length > 0 ? matching : pool;
+    const stepCost = sumOf(runs, (sample) => sample.costs[step] ?? 0);
+    costUsd += step === "planning" ? stepCost / runs.length : (stepCost / Math.max(1, sumOf(runs, (sample) => sample.tests))) * tests;
+  }
+  return { ...basis, costUsd, modelsMatched }
+}
+
+function sumOf<T>(items: T[], value: (item: T) => number) {
+  return items.reduce((sum, item) => sum + value(item), 0);
 }
 
 export function totalCost(calls: ClaudeCall[]) {

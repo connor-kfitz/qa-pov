@@ -1,8 +1,9 @@
-import { asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { asc, count, desc, eq, inArray, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { emptyCounts, runSteps } from "@/lib/helpers";
-import type { CaseCounts } from "@/types/shared.types";
+import type { RunCostSample } from "@/types/dashboard.types";
+import type { CaseCounts, ClaudeStep } from "@/types/shared.types";
 
 const idSchema = z.uuid();
 
@@ -59,6 +60,26 @@ export async function getArtifact(id: string) {
   if (!idSchema.safeParse(id).success) return null;
   const [artifact] = await db.select().from(schema.artifacts).where(eq(schema.artifacts.id, id));
   return artifact ?? null;
+}
+
+export async function listCostSamples(): Promise<RunCostSample[]> {
+  const [runs, costs, cases] = await Promise.all([
+    db
+      .select({ id: schema.runs.id, app: schema.apps.slug, scenario: schema.runs.scenario, depth: schema.runs.depth, models: schema.runs.models })
+      .from(schema.runs)
+      .innerJoin(schema.apps, eq(schema.runs.appId, schema.apps.id))
+      .where(eq(schema.runs.status, "done")),
+    db.select({ runId: schema.claudeCalls.runId, step: schema.claudeCalls.step, total: sum(schema.claudeCalls.costUsd).mapWith(Number) }).from(schema.claudeCalls).groupBy(schema.claudeCalls.runId, schema.claudeCalls.step),
+    db.select({ runId: schema.testCases.runId, total: count() }).from(schema.testCases).groupBy(schema.testCases.runId)
+  ]);
+
+  return runs.flatMap((run) => {
+    const runCosts = costs.filter((row) => row.runId === run.id);
+    const tests = cases.find((row) => row.runId === run.id)?.total ?? 0;
+    if (runCosts.length === 0 || tests === 0) return [];
+    const stepCosts = Object.fromEntries(runCosts.map((row) => [row.step, row.total])) as Partial<Record<ClaudeStep, number>>;
+    return [{ app: run.app, scenario: run.scenario, depth: run.depth, tests, models: run.models, costs: stepCosts }];
+  });
 }
 
 async function countCases(runIds: string[]) {
