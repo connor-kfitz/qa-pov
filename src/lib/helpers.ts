@@ -71,8 +71,17 @@ export function failedStep(run: Run) {
   return runSteps.find((step) => step === prefix) ?? null;
 }
 
+export function retrySteps(run: Run): RunStatus[] {
+  if (run.status !== "failed" && run.status !== "blocked") return [];
+  const stopped = runSteps.findIndex((step) => step === failedStep(run));
+  return stopped === -1 ? [...runSteps] : runSteps.slice(0, stopped + 1);
+}
+
 export function stepStates(run: Run): StepState[] {
   if (run.status === "done") return runSteps.map(() => "done");
+
+  const resumeAt = runSteps.findIndex((step) => step === run.retryFrom);
+  if (run.status === "queued" && resumeAt !== -1) return runSteps.map((_, i) => (i < resumeAt ? "done" : "pending"));
 
   const current = runSteps.findIndex((step) => step === run.status);
   if (current !== -1) return runSteps.map((_, i) => (i < current ? "done" : i === current ? "current" : "pending"));

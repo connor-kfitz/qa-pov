@@ -15,6 +15,13 @@
       "when": 1795816567706,
       "tag": "0001_organic_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795827433009,
+      "tag": "0002_open_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

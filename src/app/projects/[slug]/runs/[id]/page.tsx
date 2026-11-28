@@ -6,12 +6,13 @@ import { connection } from "next/server";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { CaseSummary } from "@/components/case-summary";
 import { PageHeader, Section, Skeleton, panelClass } from "@/components/page-header";
+import { RetryRunForm } from "@/components/retry-run-form";
 import { RunSteps } from "@/components/run-steps";
 import { CaseStatusBadge, RunStatusBadge, VerdictBadge } from "@/components/status-badge";
-import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, runDuration, scenarioDetail, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
+import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, retrySteps, runDuration, scenarioDetail, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
 import { readRunLog } from "@/lib/run-files";
-import { getRun, listCases, listClaudeCalls } from "@/lib/runs";
-import type { ClaudeCall, Run, TestCase } from "@/types/shared.types";
+import { getActiveRun, getRun, listCases, listClaudeCalls } from "@/lib/runs";
+import type { App, ClaudeCall, Run, TestCase } from "@/types/shared.types";
 
 export default function RunPage({ params }: PageProps<"/projects/[slug]/runs/[id]">) {
   return (
@@ -24,8 +25,8 @@ export default function RunPage({ params }: PageProps<"/projects/[slug]/runs/[id
 async function loadRun(slug: string, id: string) {
   const found = await getRun(id);
   if (!found || found.app.slug !== slug) return null;
-  const [cases, calls, log] = await Promise.all([listCases(id), listClaudeCalls(id), readRunLog(id)]);
-  return { ...found, cases, calls, log, now: Date.now() };
+  const [cases, calls, log, activeRun] = await Promise.all([listCases(id), listClaudeCalls(id), readRunLog(id), found.run.status === "queued" ? getActiveRun() : null]);
+  return { ...found, cases, calls, log, activeRun, now: Date.now() };
 }
 
 async function RunDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
@@ -34,7 +35,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
   const loaded = await loadRun(slug, id);
   if (!loaded) notFound();
 
-  const { run, app, cases, calls, log, now } = loaded;
+  const { run, app, cases, calls, log, activeRun, now } = loaded;
   const active = isActive(run.status);
 
   return (
@@ -58,7 +59,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         <RunSteps run={run} costs={costByStep(calls)} />
       </div>
 
-      <RunAlerts run={run} />
+      <RunAlerts run={run} activeRun={activeRun} />
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-4">
         <Fact label="Env">
@@ -109,23 +110,40 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
   );
 }
 
-function RunAlerts({ run }: { run: Run }) {
+function RunAlerts({ run, activeRun }: { run: Run; activeRun: { run: Run; app: App } | null }) {
   const stoppedAt = failedStep(run);
+  const retryFrom = retrySteps(run);
+  const retry = retryFrom.length > 0 && <RetryRunForm runId={run.id} steps={retryFrom} />;
 
   return (
     <>
+      {run.status === "queued" && (
+        <Alert tone="info" title={run.retryFrom ? `Queued to retry from ${stepLabel(run.retryFrom)}` : "Queued"}>
+          {activeRun && activeRun.run.id !== run.id ? (
+            <>
+              Waiting for{" "}
+              <Link href={`/projects/${activeRun.app.slug}/runs/${activeRun.run.id}`} className="underline underline-offset-2">
+                run {shortId(activeRun.run.id)}
+              </Link>{" "}
+              ({activeRun.app.name}, {scenarioTitle(activeRun.run)}) to finish. This run starts automatically after it.
+            </>
+          ) : (
+            "Starting now."
+          )}
+        </Alert>
+      )}
       {run.envChanged && (
         <Alert tone="warning" title="The env changed during this run">
           The deployed commit went from {run.deployedCommitStart ? shortSha(run.deployedCommitStart) : "?"} to {run.deployedCommitEnd ? shortSha(run.deployedCommitEnd) : "?"}. Failures may come from that deploy, not from this feature.
         </Alert>
       )}
       {run.status === "blocked" && run.error && (
-        <Alert tone="warning" title={`Blocked${stoppedAt ? ` while ${stoppedAt}` : ""}`}>
+        <Alert tone="warning" title={`Blocked${stoppedAt ? ` while ${stoppedAt}` : ""}`} action={retry}>
           {stripStepPrefix(run.error)}
         </Alert>
       )}
       {run.status === "failed" && run.error && (
-        <Alert tone="danger" title={`Failed${stoppedAt ? ` while ${stoppedAt}` : ""}`}>
+        <Alert tone="danger" title={`Failed${stoppedAt ? ` while ${stoppedAt}` : ""}`} action={retry}>
           {stripStepPrefix(run.error)}
         </Alert>
       )}
@@ -223,12 +241,18 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Alert({ tone, title, children }: { tone: "warning" | "danger"; title: string; children: ReactNode }) {
-  const classes = tone === "danger" ? "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200" : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200";
+const alertClasses: Record<"info" | "warning" | "danger", string> = {
+  info: "border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-200",
+  warning: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200",
+  danger: "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200"
+}
+
+function Alert({ tone, title, action, children }: { tone: keyof typeof alertClasses; title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 text-sm ${classes}`}>
+    <div className={`rounded-lg border px-4 py-3 text-sm ${alertClasses[tone]}`}>
       <p className="font-medium">{title}</p>
       <p className="mt-1 break-words">{children}</p>
+      {action}
     </div>
   );
 }

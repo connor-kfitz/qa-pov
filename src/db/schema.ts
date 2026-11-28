@@ -28,6 +28,8 @@ export const runs = pgTable("runs", {
   compareRef: text("compare_ref"),
   featureRef: text("feature_ref"),
   status: runStatusEnum("status").notNull().default("queued"),
+  retryFrom: runStatusEnum("retry_from"),
+  queuedAt: timestamp("queued_at", { withTimezone: true }).notNull().defaultNow(),
   error: text("error"),
   deployedCommitStart: text("deployed_commit_start"),
   deployedCommitEnd: text("deployed_commit_end"),

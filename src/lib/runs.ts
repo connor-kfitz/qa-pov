@@ -1,7 +1,7 @@
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
-import { emptyCounts } from "@/lib/helpers";
+import { emptyCounts, runSteps } from "@/lib/helpers";
 import type { CaseCounts } from "@/types/shared.types";
 
 const idSchema = z.uuid();
@@ -25,6 +25,17 @@ export async function getRun(id: string) {
     .from(schema.runs)
     .innerJoin(schema.apps, eq(schema.runs.appId, schema.apps.id))
     .where(eq(schema.runs.id, id));
+  return row ?? null;
+}
+
+export async function getActiveRun() {
+  const [row] = await db
+    .select({ run: schema.runs, app: schema.apps })
+    .from(schema.runs)
+    .innerJoin(schema.apps, eq(schema.runs.appId, schema.apps.id))
+    .where(inArray(schema.runs.status, [...runSteps]))
+    .orderBy(sql`${schema.runs.startedAt} desc nulls last`)
+    .limit(1);
   return row ?? null;
 }
 

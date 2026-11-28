@@ -6,8 +6,10 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
 import { loadAppConfig, saveNewAppConfig } from "@/lib/app-config";
-import { bypassSecretEnvName, roleEnvNames, slugify } from "@/lib/helpers";
+import { bypassSecretEnvName, retrySteps, roleEnvNames, runSteps, slugify, stepLabel } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
+import { requeueRun } from "@/lib/run-queue";
+import { getRun } from "@/lib/runs";
 import type { FormState } from "@/types/dashboard.types";
 import type { AppConfig } from "@/types/shared.types";
 
@@ -46,6 +48,26 @@ export async function startRun(_prev: FormState, formData: FormData): Promise<Fo
   launchRunner(run.id);
   revalidatePath("/", "layout");
   redirect(`/projects/${app.slug}/runs/${run.id}`);
+}
+
+const retryRunSchema = z.object({
+  runId: z.uuid(),
+  from: z.enum(runSteps)
+});
+
+export async function retryRun(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = retryRunSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Pick a step to retry from." };
+
+  const { runId, from } = parsed.data;
+  const found = await getRun(runId);
+  if (!found) return { error: "This run no longer exists." };
+  if (!retrySteps(found.run).includes(from)) return { error: `This run can't be retried from ${stepLabel(from)}.` };
+  if (!(await requeueRun(runId, from, ["failed", "blocked"]))) return { error: "This run is already being retried." };
+
+  launchRunner(runId);
+  revalidatePath("/", "layout");
+  return {}
 }
 
 const roleInputSchema = z.object({

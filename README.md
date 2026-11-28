@@ -39,6 +39,9 @@ pnpm qa --app synergy-qmp --scenario feature --feature <branch> --max 5
 # Entire-branch run (scenario 1)
 pnpm qa --app synergy-qmp --scenario codebase --max 10
 
+# Retry a run from a step
+pnpm qa --run <run id> --from writing
+
 # Run a run's generated specs directly
 QA_APP=synergy-qmp QA_RUN_DIR=runs/<run id> pnpm pw
 
@@ -47,6 +50,12 @@ pnpm dev                    # dashboard on localhost:3000
 
 Starting a run from the dashboard queues it and launches the runner in the
 background (`pnpm qa --run <id>`), logging to `runs/<run id>/runner.log`.
+
+Only one run executes at a time (a Postgres advisory lock), since parallel runs
+would overwrite each other's saved sign-ins. A run started while another is in
+progress stays queued; when a run finishes, its runner launches the oldest
+queued run. Failed or blocked runs can be retried from the run page, from the
+step that failed or any earlier one.
 
 ## Layout
 
