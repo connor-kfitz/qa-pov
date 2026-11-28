@@ -57,4 +57,6 @@ export function Skeleton({ rows = 4 }: { rows?: number }) {
 
 export const buttonClass = "inline-flex items-center justify-center rounded-md bg-foreground px-3.5 py-2 text-sm font-medium text-background hover:opacity-85 disabled:opacity-60";
 
-export const panelClass = "rounded-lg border bg-panel";
+export const secondaryButtonClass = "inline-flex items-center justify-center rounded-md border px-3.5 py-2 text-sm font-medium hover:bg-hover";
+
+export const panelClass ="rounded-lg border bg-panel";

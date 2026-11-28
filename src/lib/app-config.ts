@@ -46,6 +46,11 @@ export async function saveNewAppConfig(config: AppConfig) {
   await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, { flag: "wx" });
 }
 
+export async function saveAppConfig(config: AppConfig) {
+  const file = path.join(appsDir, `${config.slug}.json`);
+  await writeFile(file, `${JSON.stringify(config, null, 2)}\n`);
+}
+
 export function loadAppConfigSync(slug: string): AppConfig {
   const file = path.join(appsDir, `${slug}.json`);
   return appConfigSchema.parse(JSON.parse(readFileSync(file, "utf8")));

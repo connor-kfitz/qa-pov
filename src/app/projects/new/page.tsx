@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { NewProjectForm } from "./new-project-form";
+import { ProjectForm } from "@/components/project-form";
 
 export default function NewProjectPage() {
   return (
@@ -9,7 +9,7 @@ export default function NewProjectPage() {
         crumbs={[{ href: "/", label: "Projects" }]}
         description="A deployed web app to test: where it lives, where its code is, and which test logins to use. Passwords stay in your local .env."
       />
-      <NewProjectForm />
+      <ProjectForm />
     </>
   );
 }

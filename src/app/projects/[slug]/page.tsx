@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { PageHeader, Section, Skeleton, buttonClass } from "@/components/page-header";
+import { PageHeader, Section, Skeleton, buttonClass, secondaryButtonClass } from "@/components/page-header";
 import { RunTree } from "@/components/run-tree";
 import { getProject, listProjectRuns } from "@/lib/projects";
 import { isActive } from "@/lib/helpers";
@@ -49,9 +49,14 @@ async function ProjectDetail({ params }: { params: Promise<{ slug: string }> }) 
           <>
             {runs.some(({ run }) => isActive(run.status)) && <AutoRefresh />}
             {project.configured && (
-              <Link href={`/runs/new?app=${project.slug}`} className={buttonClass}>
-                New run
-              </Link>
+              <>
+                <Link href={`/projects/${project.slug}/edit`} className={secondaryButtonClass}>
+                  Edit
+                </Link>
+                <Link href={`/runs/new?app=${project.slug}`} className={buttonClass}>
+                  New run
+                </Link>
+              </>
             )}
           </>
         }

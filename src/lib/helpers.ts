@@ -3,7 +3,7 @@ import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
 import type { CommitOption, DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RefSuggestion, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
-import type { CaseCounts, ClaudeCall, Depth, Run, RunScope, RunStatus, TestCase } from "@/types/shared.types";
+import type { CaseCounts, ClaudeCall, Depth, RoleConfig, Run, RunScope, RunStatus, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
 
@@ -20,6 +20,7 @@ const activeStatuses: RunStatus[] = ["queued", ...runSteps];
 
 export const sidebarWidths = { min: 200, max: 480, initial: 256 }
 export const sidebarWidthKey = "qa-pov:sidebar-width";
+export const savedSecretMask = "••••••••";
 
 const relativeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const dateTimeFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
@@ -259,6 +260,10 @@ function envName(...parts: string[]) {
 export function roleEnvNames(slug: string, role: string) {
   const prefix = envName(slug, role);
   return { emailEnv: `${prefix}_EMAIL`, passwordEnv: `${prefix}_PASSWORD` }
+}
+
+export function resolveRoleEnv(slug: string, roleName: string, previous: RoleConfig | undefined) {
+  return previous && !("skip" in previous) ? { emailEnv: previous.emailEnv, passwordEnv: previous.passwordEnv } : roleEnvNames(slug, roleName);
 }
 
 export function bypassSecretEnvName(slug: string) {

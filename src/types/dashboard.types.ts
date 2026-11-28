@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import type { App, Run, RunStatus, Scenario, TestCase } from "@/types/shared.types";
+import type { z } from "zod";
+import type { projectInputSchema } from "@/lib/project-input";
+import type { App, AppConfig, Run, RunStatus, Scenario, TestCase } from "@/types/shared.types";
 
 export interface FormState {
   error?: string;
@@ -82,9 +84,20 @@ export type RefSuggestion = { kind: "branch"; value: string; name: string } | { 
 
 export interface RoleRow {
   key: number;
+  originalName?: string;
   name: string;
   loginUrl: string;
   skip: boolean;
+  email: string;
+  password: string;
+}
+
+export type ProjectInput = z.infer<typeof projectInputSchema>;
+
+export interface EditableProject {
+  config: AppConfig;
+  envSet: Record<string, boolean>;
+  emails: Record<string, string>;
 }
 
 export interface Crumb {

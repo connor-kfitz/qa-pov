@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { upsertApp } from "@/db/apps";
-import { loadAppConfig, saveNewAppConfig } from "@/lib/app-config";
-import { bypassSecretEnvName, retrySteps, roleEnvNames, runSteps, slugify, stepLabel } from "@/lib/helpers";
+import { loadAppConfig, saveAppConfig, saveNewAppConfig } from "@/lib/app-config";
+import { updateEnvFile } from "@/lib/env-file";
+import { retrySteps, runSteps, slugify, stepLabel } from "@/lib/helpers";
 import { launchRunner } from "@/lib/launch-runner";
+import { buildAppConfig, parseProjectForm, secretUpdates } from "@/lib/project-input";
 import { requeueRun } from "@/lib/run-queue";
 import { getRun } from "@/lib/runs";
-import type { FormState } from "@/types/dashboard.types";
+import type { FormState, ProjectInput } from "@/types/dashboard.types";
 import type { AppConfig } from "@/types/shared.types";
 
 const startRunSchema = z.object({
@@ -70,50 +72,18 @@ export async function retryRun(_prev: FormState, formData: FormData): Promise<Fo
   return {}
 }
 
-const roleInputSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Every role needs a name.")
-    .regex(/^[a-z][a-z0-9_-]*$/, "Role names use lowercase letters, numbers, - and _ (e.g. admin)."),
-  loginUrl: z.string().trim(),
-  skip: z.boolean()
-});
-
-const createProjectSchema = z.object({
-  name: z.string().trim().min(1, "Give the project a name."),
-  baseUrl: z.url("Live URL must be a full URL, like https://develop.example.com."),
-  repoUrl: z.union([z.literal(""), z.url("GitHub repo must be a full URL, like https://github.com/org/repo.")]),
-  repoPath: z.string().trim().min(1, "Add the local repo path so the runner can read the code."),
-  compareBranch: z.string().trim().min(1, "Add a default branch."),
-  protectedPreview: z.literal("on").optional(),
-  roles: z.array(roleInputSchema).min(1, "Add at least one role.")
-});
-
 export async function createProject(_prev: FormState, formData: FormData): Promise<FormState> {
-  const fields = Object.fromEntries(formData);
-  const roles = z.string().transform((raw) => JSON.parse(raw)).safeParse(fields.roles);
-  const parsed = createProjectSchema.safeParse({ ...fields, roles: roles.success ? roles.data : [] });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const input = parseProjectForm(formData);
+  if (typeof input === "string") return { error: input };
 
-  const input = parsed.data;
   const slug = slugify(input.name);
   if (!slug) return { error: "The name needs at least one letter or number." };
   if (slug === "new") return { error: "\"new\" is reserved; pick another name." };
 
-  const roleNames = input.roles.map((role) => role.name);
-  if (new Set(roleNames).size !== roleNames.length) return { error: "Role names must be unique." };
-
-  const config: AppConfig = {
-    slug,
-    name: input.name,
-    baseUrl: input.baseUrl,
-    ...(input.repoUrl && { repoUrl: input.repoUrl }),
-    repoPath: input.repoPath,
-    compareBranch: input.compareBranch,
-    ...(input.protectedPreview && { bypassSecretEnv: bypassSecretEnvName(slug) }),
-    roles: Object.fromEntries(input.roles.map((role) => [role.name, role.skip ? { skip: true as const } : { loginUrl: role.loginUrl || "/login", ...roleEnvNames(slug, role.name) }]))
-  }
+  const config = buildAppConfig(slug, input, null);
+  if (await loadAppConfig(slug).catch(() => null)) return { error: `A project with the slug "${slug}" already exists.` };
+  const saved = await saveSecrets(config, input);
+  if (saved.error) return saved;
 
   try {
     await saveNewAppConfig(config);
@@ -121,8 +91,32 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
     if ((err as NodeJS.ErrnoException).code === "EEXIST") return { error: `A project with the slug "${slug}" already exists.` };
     throw err;
   }
-
   await upsertApp(config);
   revalidatePath("/", "layout");
   redirect(`/projects/${slug}`);
+}
+
+export async function updateProject(slug: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const existing = await loadAppConfig(slug).catch(() => null);
+  if (!existing) return { error: `No config found for ${slug} in qa-apps/.` };
+
+  const input = parseProjectForm(formData);
+  if (typeof input === "string") return { error: input };
+
+  const config = buildAppConfig(slug, input, existing);
+  const saved = await saveSecrets(config, input);
+  if (saved.error) return saved;
+  await saveAppConfig(config);
+  await upsertApp(config);
+  revalidatePath("/", "layout");
+  redirect(`/projects/${slug}`);
+}
+
+async function saveSecrets(config: AppConfig, input: ProjectInput): Promise<FormState> {
+  try {
+    await updateEnvFile(secretUpdates(config, input, process.env));
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't save the credentials to .env." };
+  }
 }
