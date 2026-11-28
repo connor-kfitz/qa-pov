@@ -35,6 +35,33 @@ export interface RunGroup {
   runs: ProjectRun[];
 }
 
+export type NavRun = Pick<Run, "id" | "status" | "createdAt">;
+
+export interface NavFeature {
+  name: string;
+  runs: NavRun[];
+}
+
+export interface NavBranch {
+  name: string;
+  runs: NavRun[];
+  features: NavFeature[];
+  runCount: number;
+}
+
+export interface NavProject {
+  slug: string;
+  name: string;
+  status: RunStatus | null;
+  runCount: number;
+  branches: NavBranch[];
+}
+
+export interface NavLocation {
+  slug: string | null;
+  runId: string | null;
+}
+
 export interface AppOption {
   slug: string;
   name: string;

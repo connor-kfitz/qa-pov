@@ -3,13 +3,16 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { NavLink } from "@/components/nav-link";
-import { navLinkClass } from "@/lib/helpers";
+import { ProjectTree } from "@/components/project-tree";
+import { SidebarResizer } from "@/components/sidebar-resizer";
 import { RunStatusDot } from "@/components/status-badge";
-import { listProjects } from "@/lib/projects";
+import { navLinkClass } from "@/lib/helpers";
+import { listNavProjects } from "@/lib/projects";
 
 export function Sidebar() {
   return (
-    <aside className="flex shrink-0 flex-col border-b bg-sidebar md:sticky md:top-0 md:h-screen md:w-64 md:border-r md:border-b-0">
+    <aside className="relative flex shrink-0 flex-col border-b bg-sidebar md:sticky md:top-0 md:h-screen md:w-[var(--sidebar-width,16rem)] md:border-r md:border-b-0">
+      <SidebarResizer />
       <div className="flex h-14 items-center px-5">
         <Link href="/" className="font-semibold tracking-tight">
           qa-pov
@@ -51,9 +54,14 @@ function PrimaryLinks({ highlight }: { highlight?: boolean }) {
   );
 }
 
+async function loadNav() {
+  const projects = await listNavProjects();
+  return { projects, now: Date.now() };
+}
+
 async function ProjectLinks() {
   await connection();
-  const projects = await listProjects();
+  const { projects, now } = await loadNav();
 
   if (projects.length === 0) {
     return (
@@ -64,15 +72,20 @@ async function ProjectLinks() {
   }
 
   return (
-    <nav className="flex gap-0.5 overflow-x-auto px-3 md:flex-col md:overflow-y-auto">
-      {projects.map((project) => (
-        <NavLink key={project.slug} href={`/projects/${project.slug}`}>
-          <RunStatusDot status={project.latestRun?.status ?? null} />
-          <span className="truncate">{project.name}</span>
-          {project.runCount > 0 && <span className="ml-auto pl-2 text-xs text-subtle tabular-nums">{project.runCount}</span>}
-        </NavLink>
-      ))}
-    </nav>
+    <>
+      <nav className="flex gap-0.5 overflow-x-auto px-3 md:hidden">
+        {projects.map((project) => (
+          <NavLink key={project.slug} href={`/projects/${project.slug}`}>
+            <RunStatusDot status={project.status} />
+            <span className="truncate">{project.name}</span>
+            {project.runCount > 0 && <span className="ml-auto pl-2 text-xs text-subtle tabular-nums">{project.runCount}</span>}
+          </NavLink>
+        ))}
+      </nav>
+      <nav className="hidden min-h-0 overflow-y-auto md:block">
+        <ProjectTree projects={projects} now={now} />
+      </nav>
+    </>
   );
 }
 

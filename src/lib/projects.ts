@@ -1,7 +1,8 @@
 import { count, desc, eq, inArray, sum } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { listAppConfigs, loadAppConfig } from "@/lib/app-config";
-import type { Project, ProjectRun } from "@/types/dashboard.types";
+import { buildNavBranches } from "@/lib/helpers";
+import type { NavProject, Project, ProjectRun } from "@/types/dashboard.types";
 
 export async function listProjects(): Promise<Project[]> {
   const [configs, apps, latestRuns, runCounts] = await Promise.all([
@@ -29,6 +30,32 @@ export async function listProjects(): Promise<Project[]> {
   }
 
   return [...projects.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function listNavProjects(): Promise<NavProject[]> {
+  const [projects, runs] = await Promise.all([
+    listProjects(),
+    db
+      .select({
+        id: schema.runs.id,
+        appId: schema.runs.appId,
+        status: schema.runs.status,
+        createdAt: schema.runs.createdAt,
+        scenario: schema.runs.scenario,
+        featureRef: schema.runs.featureRef,
+        compareRef: schema.runs.compareRef
+      })
+      .from(schema.runs)
+      .orderBy(desc(schema.runs.createdAt))
+  ]);
+
+  return projects.map((project) => ({
+    slug: project.slug,
+    name: project.name,
+    status: project.latestRun?.status ?? null,
+    runCount: project.runCount,
+    branches: buildNavBranches(runs.filter((run) => run.appId === project.app?.id))
+  }));
 }
 
 export async function getProject(slug: string) {

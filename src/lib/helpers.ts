@@ -1,9 +1,9 @@
 import { caseStatusEnum } from "@/db/schema";
 import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
-import type { DiffLine, ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
+import type { DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
-import type { CaseCounts, ClaudeCall, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
+import type { CaseCounts, ClaudeCall, Depth, Run, RunScope, RunStatus, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
 
@@ -17,6 +17,9 @@ const stepLabels: Record<(typeof runSteps)[number], string> = {
 }
 
 const activeStatuses: RunStatus[] = ["queued", ...runSteps];
+
+export const sidebarWidths = { min: 200, max: 480, initial: 256 }
+export const sidebarWidthKey = "qa-pov:sidebar-width";
 
 const relativeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const dateTimeFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
@@ -102,16 +105,55 @@ export function stepStates(run: Run): StepState[] {
   return runSteps.map((_, i) => (i < stopped ? "done" : i === stopped ? stoppedState : "pending"));
 }
 
+export function runGroupKey(run: RunScope) {
+  return run.scenario === "codebase" ? `branch:${run.compareRef}` : `feature:${run.featureRef}`;
+}
+
 export function groupRuns(runs: ProjectRun[]) {
   const groups = new Map<string, RunGroup>();
   for (const projectRun of runs) {
     const { run } = projectRun;
-    const key = run.scenario === "codebase" ? `branch:${run.compareRef}` : `feature:${run.featureRef}`;
+    const key = runGroupKey(run);
     const group = groups.get(key) ?? { key, label: scenarioTitle(run), kind: run.scenario, runs: [] };
     group.runs.push(projectRun);
     groups.set(key, group);
   }
   return [...groups.values()];
+}
+
+export function buildNavBranches(runs: (NavRun & RunScope)[]) {
+  const branches = new Map<string, NavBranch>();
+  for (const run of runs) {
+    const name = run.compareRef ?? "default branch";
+    const branch = branches.get(name) ?? { name, runs: [], features: [], runCount: 0 };
+    const navRun = { id: run.id, status: run.status, createdAt: run.createdAt };
+    branch.runCount += 1;
+    if (run.scenario === "feature") {
+      const featureName = run.featureRef ?? "Feature";
+      const feature = branch.features.find((existing) => existing.name === featureName);
+      if (feature) feature.runs.push(navRun);
+      else branch.features.push({ name: featureName, runs: [navRun] });
+    } else {
+      branch.runs.push(navRun);
+    }
+    branches.set(name, branch);
+  }
+  return [...branches.values()];
+}
+
+export function clampSidebarWidth(width: number) {
+  return Math.round(Math.min(sidebarWidths.max, Math.max(sidebarWidths.min, width)));
+}
+
+export function sidebarWidthScript() {
+  const { min, max } = sidebarWidths;
+  return `try{var w=Number(localStorage.getItem(${JSON.stringify(sidebarWidthKey)}));if(w>=${min}&&w<=${max})document.documentElement.style.setProperty("--sidebar-width",w+"px")}catch(e){}`;
+}
+
+export function navLocation(pathname: string): NavLocation {
+  const [, section, slug, child, runId] = pathname.split("/");
+  if (section !== "projects" || !slug || slug === "new") return { slug: null, runId: null };
+  return { slug, runId: child === "runs" && runId ? runId : null }
 }
 
 export function stripStepPrefix(error: string) {
@@ -131,11 +173,11 @@ export function deployedCommitLabel(run: Run) {
   return end && end !== start ? `${start} → ${end}` : start;
 }
 
-export function entireBranchLabel(run: Run) {
+export function entireBranchLabel(run: RunScope) {
   return run.compareRef ? `Entire branch · ${run.compareRef}` : "Entire branch";
 }
 
-export function scenarioTitle(run: Run) {
+export function scenarioTitle(run: RunScope) {
   return run.scenario === "feature" ? (run.featureRef ?? "Feature") : entireBranchLabel(run);
 }
 
