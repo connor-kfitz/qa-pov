@@ -62,6 +62,12 @@ export interface NavLocation {
   runId: string | null;
 }
 
+export interface CommitOption {
+  sha: string;
+  subject: string;
+  date: string;
+}
+
 export interface AppOption {
   slug: string;
   name: string;
@@ -69,7 +75,10 @@ export interface AppOption {
   compareBranch: string;
   roles: string[];
   branches: string[];
+  commits: CommitOption[];
 }
+
+export type RefSuggestion = { kind: "branch"; value: string; name: string } | { kind: "commit"; value: string; commit: CommitOption };
 
 export interface RoleRow {
   key: number;

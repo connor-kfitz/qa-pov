@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { PageHeader, Skeleton } from "@/components/page-header";
 import { listAppConfigs } from "@/lib/app-config";
-import { listBranches } from "@/lib/git";
+import { listBranches, listRecentCommits } from "@/lib/git";
 import { shortId } from "@/lib/helpers";
 import { getActiveRun } from "@/lib/runs";
 import { NewRunForm } from "./new-run-form";
@@ -35,7 +35,8 @@ async function NewRunLoader({ searchParams }: { searchParams: PageProps<"/runs/n
       baseUrl: config.baseUrl,
       compareBranch: config.compareBranch,
       roles: Object.keys(config.roles),
-      branches: await listBranches(config.repoPath)
+      branches: await listBranches(config.repoPath),
+      commits: await listRecentCommits(config.repoPath, config.compareBranch)
     }))
   );
   return (

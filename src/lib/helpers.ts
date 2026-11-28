@@ -1,7 +1,7 @@
 import { caseStatusEnum } from "@/db/schema";
 import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
-import type { DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
+import type { CommitOption, DiffLine, NavBranch, NavLocation, NavRun, ProjectRun, RefSuggestion, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
 import type { CaseCounts, ClaudeCall, Depth, Run, RunScope, RunStatus, TestCase } from "@/types/shared.types";
 
@@ -23,7 +23,8 @@ export const sidebarWidthKey = "qa-pov:sidebar-width";
 
 const relativeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const dateTimeFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
-const usdFormat = new Intl.NumberFormat("en-CA", { style: "currency", currency: "USD" });
+const shortDateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
+const usdFormat =new Intl.NumberFormat("en-CA", { style: "currency", currency: "USD" });
 
 const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
   ["day", 86_400_000],
@@ -148,6 +149,24 @@ export function clampSidebarWidth(width: number) {
 export function sidebarWidthScript() {
   const { min, max } = sidebarWidths;
   return `try{var w=Number(localStorage.getItem(${JSON.stringify(sidebarWidthKey)}));if(w>=${min}&&w<=${max})document.documentElement.style.setProperty("--sidebar-width",w+"px")}catch(e){}`;
+}
+
+export function formatShortDate(iso: string) {
+  return shortDateFormat.format(new Date(iso));
+}
+
+export function commitRange(sha: string) {
+  return `${sha}~1..${sha}`;
+}
+
+export function refSuggestions(query: string, branches: string[], commits: CommitOption[], exclude: string, limit = 8): RefSuggestion[] {
+  const needle = query.trim().toLowerCase();
+  const matchingBranches = branches.filter((branch) => branch !== exclude && branch.toLowerCase().includes(needle)).slice(0, limit);
+  const matchingCommits = commits.filter((commit) => !needle || commitRange(commit.sha).toLowerCase().includes(needle) || commit.subject.toLowerCase().includes(needle)).slice(0, limit);
+  return [
+    ...matchingBranches.map((name) => ({ kind: "branch" as const, value: name, name })),
+    ...matchingCommits.map((commit) => ({ kind: "commit" as const, value: commitRange(commit.sha), commit }))
+  ];
 }
 
 export function navLocation(pathname: string): NavLocation {

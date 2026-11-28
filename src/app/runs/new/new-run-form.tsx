@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Choice, Field, FormError, Select, inputClass } from "@/components/form";
 import { buttonClass } from "@/components/page-header";
+import { RefCombobox } from "@/components/ref-combobox";
 import { startRun } from "@/app/actions";
 import type { AppOption, FormState } from "@/types/dashboard.types";
 import type { Scenario } from "@/types/shared.types";
@@ -53,7 +54,7 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
       {scenario === "feature" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Feature" htmlFor="featureRef" hint="Branch, PR number or commit range">
-            <input id="featureRef" name="featureRef" placeholder="feature/rating-only-reviews" className={inputClass} required />
+            <RefCombobox key={appSlug} id="featureRef" name="featureRef" branches={app?.branches ?? []} commits={app?.commits ?? []} compareBranch={app?.compareBranch ?? "develop"} />
           </Field>
           <Field label="Compare against" htmlFor="compareRef" hint="Base for the diff">
             <BranchPicker key={appSlug} id="compareRef" app={app} />

@@ -1,6 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { promisify } from "node:util";
+import type { CommitOption } from "@/types/dashboard.types";
 import type { ResolvedRef } from "@/types/runner.types";
 
 const run = promisify(execFile);
@@ -17,6 +18,19 @@ export async function listBranches(repoPath: string): Promise<string[]> {
     .map((ref) => ref.trim().replace(/^origin\//, ""))
     .filter((ref) => ref && ref !== "HEAD" && ref !== "origin");
   return [...new Set(names)].sort((a, b) => a.localeCompare(b));
+}
+
+export async function listRecentCommits(repoPath: string, branch: string, limit = 40): Promise<CommitOption[]> {
+  const args = ["log", `--max-count=${limit}`, "--format=%h%x1f%s%x1f%cI"];
+  const output = await git(repoPath, [...args, `origin/${branch}`], 5000).catch(() => git(repoPath, [...args, branch], 5000).catch(() => ""));
+
+  return output
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [sha, subject, date] = line.split("\x1f");
+      return { sha, subject, date };
+    });
 }
 
 export async function fetchOrigin(repoPath: string) {
