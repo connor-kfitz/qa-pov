@@ -342,6 +342,14 @@ export function toPosix(file: string) {
   return file.split(/[\/]/).join("/");
 }
 
+export function parseByteRange(header: string, size: number) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match || (!match[1] && !match[2])) return null;
+  const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  const end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+  return start <= end ? { start, end } : null;
+}
+
 export function parseAnswer<T>(answer: string, answerSchema: ZodType<T>): T | null {
   try {
     const parsed = answerSchema.safeParse(extractJson(answer));
