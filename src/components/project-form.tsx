@@ -52,13 +52,13 @@ export function ProjectForm({ project }: { project?: EditableProject }) {
   return (
     <form action={formAction} className="flex max-w-2xl flex-col gap-8">
       <Field label="Name" htmlFor="name" hint={slug ? `Saved as qa-apps/${slug}.json` : undefined}>
-        <input id="name" name="name" value={fields.name} onChange={setField("name")} placeholder="Synergy QMP" className={inputClass} required />
+        <input id="name" name="name" value={fields.name} onChange={setField("name")} placeholder="Synergy QMP" className={inputClass} required/>
       </Field>
 
       <Field label="Live URL" htmlFor="baseUrl" hint="The deployed env tests run against">
-        <input id="baseUrl" name="baseUrl" type="url" value={fields.baseUrl} onChange={setField("baseUrl")} placeholder="https://develop.example.com" className={inputClass} required />
+        <input id="baseUrl" name="baseUrl" type="url" value={fields.baseUrl} onChange={setField("baseUrl")} placeholder="https://develop.example.com" className={inputClass} required/>
         <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted">
-          <input type="checkbox" name="protectedPreview" checked={protectedPreview} onChange={(event) => setProtectedPreview(event.target.checked)} className="accent-foreground" />
+          <input type="checkbox" name="protectedPreview" checked={protectedPreview} onChange={(event) => setProtectedPreview(event.target.checked)} className="accent-foreground"/>
           Behind Vercel Deployment Protection
         </label>
         {protectedPreview && (
@@ -76,15 +76,15 @@ export function ProjectForm({ project }: { project?: EditableProject }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="GitHub repo" htmlFor="repoUrl" hint="Optional">
-          <input id="repoUrl" name="repoUrl" type="url" value={fields.repoUrl} onChange={setField("repoUrl")} placeholder="https://github.com/org/repo" className={inputClass} />
+          <input id="repoUrl" name="repoUrl" type="url" value={fields.repoUrl} onChange={setField("repoUrl")} placeholder="https://github.com/org/repo" className={inputClass}/>
         </Field>
         <Field label="Default branch" htmlFor="compareBranch" hint="Deployed to the live URL">
-          <input id="compareBranch" name="compareBranch" value={fields.compareBranch} onChange={setField("compareBranch")} className={inputClass} required />
+          <input id="compareBranch" name="compareBranch" value={fields.compareBranch} onChange={setField("compareBranch")} className={inputClass} required/>
         </Field>
       </div>
 
       <Field label="Local repo path" htmlFor="repoPath" hint="Where the runner reads the code">
-        <input id="repoPath" name="repoPath" value={fields.repoPath} onChange={setField("repoPath")} placeholder="C:/code/synergy-qmp" className={`${inputClass} font-mono`} required />
+        <input id="repoPath" name="repoPath" value={fields.repoPath} onChange={setField("repoPath")} placeholder="C:/code/synergy-qmp" className={`${inputClass} font-mono`} required/>
       </Field>
 
       <fieldset className="flex flex-col gap-3">
@@ -99,10 +99,10 @@ export function ProjectForm({ project }: { project?: EditableProject }) {
             <div key={role.key} className="flex flex-col gap-3 rounded-lg border p-3">
               <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <Field label="Role" htmlFor={`role-${role.key}`}>
-                  <input id={`role-${role.key}`} value={role.name} onChange={(event) => updateRole(role.key, { name: event.target.value })} placeholder="student" className={inputClass} required />
+                  <input id={`role-${role.key}`} value={role.name} onChange={(event) => updateRole(role.key, { name: event.target.value })} placeholder="student" className={inputClass} required/>
                 </Field>
                 <Field label="Login path" htmlFor={`login-${role.key}`}>
-                  <input id={`login-${role.key}`} value={role.loginUrl} onChange={(event) => updateRole(role.key, { loginUrl: event.target.value })} disabled={role.skip} className={`${inputClass} disabled:opacity-50`} />
+                  <input id={`login-${role.key}`} value={role.loginUrl} onChange={(event) => updateRole(role.key, { loginUrl: event.target.value })} disabled={role.skip} className={`${inputClass} disabled:opacity-50`}/>
                 </Field>
                 <button type="button" onClick={() => removeRole(role.key)} disabled={roles.length === 1} className={`${secondaryButtonClass} disabled:opacity-40`}>
                   Remove
@@ -130,7 +130,7 @@ export function ProjectForm({ project }: { project?: EditableProject }) {
                 </div>
               )}
               <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted">
-                <input type="checkbox" checked={role.skip} onChange={(event) => updateRole(role.key, { skip: event.target.checked })} className="accent-foreground" />
+                <input type="checkbox" checked={role.skip} onChange={(event) => updateRole(role.key, { skip: event.target.checked })} className="accent-foreground"/>
                 No login (public pages)
               </label>
             </div>
@@ -143,9 +143,9 @@ export function ProjectForm({ project }: { project?: EditableProject }) {
         </div>
       </fieldset>
 
-      <input type="hidden" name="roles" value={JSON.stringify(roles.map(({ originalName, name, loginUrl, skip, email, password }) => ({ originalName, name, loginUrl, skip, email, password })))} />
+      <input type="hidden" name="roles" value={JSON.stringify(roles.map(({ originalName, name, loginUrl, skip, email, password }) => ({ originalName, name, loginUrl, skip, email, password })))}/>
 
-      <FormError message={state.error} />
+      <FormError message={state.error}/>
 
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className={buttonClass}>

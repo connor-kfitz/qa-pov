@@ -49,7 +49,7 @@ export function Skeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="flex flex-col gap-2">
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-panel" />
+        <div key={i} className="h-10 animate-pulse rounded-md bg-panel"/>
       ))}
     </div>
   );

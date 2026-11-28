@@ -38,26 +38,26 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium">What to test</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Choice name="scenario" value="codebase" checked={scenario === "codebase"} onChange={() => setScenario("codebase")} title="Entire branch" detail="All code on one branch. Routes and a live crawl, core flows first." />
-          <Choice name="scenario" value="feature" checked={scenario === "feature"} onChange={() => setScenario("feature")} title="A feature" detail="A branch, PR or commit range. The diff bounds what gets tested." />
+          <Choice name="scenario" value="codebase" checked={scenario === "codebase"} onChange={() => setScenario("codebase")} title="Entire branch" detail="All code on one branch. Routes and a live crawl, core flows first."/>
+          <Choice name="scenario" value="feature" checked={scenario === "feature"} onChange={() => setScenario("feature")} title="A feature" detail="A branch, PR or commit range. The diff bounds what gets tested."/>
         </div>
       </fieldset>
 
       {scenario === "codebase" && (
         <>
           <Field label="Branch" htmlFor="compareRef" hint="Whose code gets tested">
-            <BranchPicker key={appSlug} id="compareRef" app={app} />
+            <BranchPicker key={appSlug} id="compareRef" app={app}/>
           </Field>
-          <input type="hidden" name="featureRef" value="" />
+          <input type="hidden" name="featureRef" value=""/>
         </>
       )}
       {scenario === "feature" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Feature" htmlFor="featureRef" hint="Branch, PR number or commit range">
-            <RefCombobox key={appSlug} id="featureRef" name="featureRef" branches={app?.branches ?? []} commits={app?.commits ?? []} compareBranch={app?.compareBranch ?? "develop"} />
+            <RefCombobox key={appSlug} id="featureRef" name="featureRef" branches={app?.branches ?? []} commits={app?.commits ?? []} compareBranch={app?.compareBranch ?? "develop"}/>
           </Field>
           <Field label="Compare against" htmlFor="compareRef" hint="Base for the diff">
-            <BranchPicker key={appSlug} id="compareRef" app={app} />
+            <BranchPicker key={appSlug} id="compareRef" app={app}/>
           </Field>
         </div>
       )}
@@ -65,16 +65,16 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium">Depth</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Choice name="depth" value="base" defaultChecked title="Base cases" detail="The main path each change is meant to support." />
-          <Choice name="depth" value="base_edge" title="Base + edge cases" detail="Adds invalid input, empty states, permissions and errors." />
+          <Choice name="depth" value="base" defaultChecked title="Base cases" detail="The main path each change is meant to support."/>
+          <Choice name="depth" value="base_edge" title="Base + edge cases" detail="Adds invalid input, empty states, permissions and errors."/>
         </div>
       </fieldset>
 
       <Field label="Max tests" htmlFor="maxTests" hint="Claude ranks cases by risk and keeps the top N">
-        <input id="maxTests" name="maxTests" type="number" min={1} max={100} placeholder="No limit" className={`${inputClass} sm:max-w-40`} />
+        <input id="maxTests" name="maxTests" type="number" min={1} max={100} placeholder="No limit" className={`${inputClass} sm:max-w-40`}/>
       </Field>
 
-      <FormError message={state.error} />
+      <FormError message={state.error}/>
 
       <div>
         <button type="submit" disabled={pending} className={buttonClass}>
@@ -88,7 +88,7 @@ export function NewRunForm({ apps, initialApp }: { apps: AppOption[]; initialApp
 function BranchPicker({ id, app }: { id: string; app?: AppOption }) {
   const fallback = app?.compareBranch ?? "develop";
   if (!app || app.branches.length === 0) {
-    return <input id={id} name="compareRef" defaultValue={fallback} placeholder="develop" className={inputClass} />;
+    return <input id={id} name="compareRef" defaultValue={fallback} placeholder="develop" className={inputClass}/>;
   }
 
   const branches = app.branches.includes(fallback) ? app.branches : [fallback, ...app.branches];

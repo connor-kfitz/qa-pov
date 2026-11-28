@@ -56,7 +56,7 @@ export const verdictDescriptions: Record<Verdict, string> = {
 function Badge({ label, tone, pulse }: { label: string; tone: Tone; pulse?: boolean }) {
   return (
     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset ${toneClasses[tone]}`}>
-      {pulse && <span className="size-1.5 animate-pulse rounded-full bg-current" />}
+      {pulse && <span className="size-1.5 animate-pulse rounded-full bg-current"/>}
       {label}
     </span>
   );
@@ -64,20 +64,20 @@ function Badge({ label, tone, pulse }: { label: string; tone: Tone; pulse?: bool
 
 export function RunStatusBadge({ status }: { status: RunStatus }) {
   const [label, tone] = runStatuses[status];
-  return <Badge label={label} tone={tone} pulse={tone === "progress"} />;
+  return <Badge label={label} tone={tone} pulse={tone === "progress"}/>;
 }
 
 export function CaseStatusBadge({ status }: { status: CaseStatus }) {
   const [label, tone] = caseStatuses[status];
-  return <Badge label={label} tone={tone} />;
+  return <Badge label={label} tone={tone}/>;
 }
 
 export function VerdictBadge({ verdict }: { verdict: Verdict }) {
   const [label, tone] = verdicts[verdict];
-  return <Badge label={label} tone={tone} />;
+  return <Badge label={label} tone={tone}/>;
 }
 
 export function RunStatusDot({ status }: { status: RunStatus | null }) {
   const [label, tone] = status ? runStatuses[status] : ["No runs yet", "neutral" as const];
-  return <span title={label} className={`size-2 shrink-0 rounded-full ${status ? dotClasses[tone] : "ring-1 ring-subtle ring-inset"}`} />;
+  return <span title={label} className={`size-2 shrink-0 rounded-full ${status ? dotClasses[tone] : "ring-1 ring-subtle ring-inset"}`}/>;
 }

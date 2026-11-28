@@ -18,8 +18,8 @@ export function RunSteps({ run, costs = {} }: { run: Run; costs?: StepCosts }) {
       {runSteps.map((step, i) => (
         <li key={step} className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className={`size-2.5 shrink-0 rounded-full ring-2 ring-inset ${stateClasses[states[i]].dot}`} />
-            {i < runSteps.length - 1 && <span className={`h-px flex-1 ${states[i] === "done" ? "bg-emerald-500/50" : "bg-line"}`} />}
+            <span className={`size-2.5 shrink-0 rounded-full ring-2 ring-inset ${stateClasses[states[i]].dot}`}/>
+            {i < runSteps.length - 1 && <span className={`h-px flex-1 ${states[i] === "done" ? "bg-emerald-500/50" : "bg-line"}`}/>}
           </div>
           <div className="flex flex-col">
             <span className={`text-sm ${stateClasses[states[i]].text}`}>{stepLabel(step)}</span>

@@ -13,8 +13,8 @@ import type { Artifact } from "@/types/shared.types";
 
 export default function TestPage({ params }: PageProps<"/projects/[slug]/runs/[id]/tests/[testId]">) {
   return (
-    <Suspense fallback={<Skeleton rows={6} />}>
-      <TestDetail params={params} />
+    <Suspense fallback={<Skeleton rows={6}/>}>
+      <TestDetail params={params}/>
     </Suspense>
   );
 }
@@ -46,8 +46,8 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
         description={meta}
         aside={
           <>
-            {testCase.verdict && <VerdictBadge verdict={testCase.verdict} />}
-            <CaseStatusBadge status={testCase.status} />
+            {testCase.verdict && <VerdictBadge verdict={testCase.verdict}/>}
+            <CaseStatusBadge status={testCase.status}/>
           </>
         }
       />
@@ -60,7 +60,7 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
         </div>
       )}
 
-      {repairChanges.length > 0 && <RepairChanges lines={repairChanges} />}
+      {repairChanges.length > 0 && <RepairChanges lines={repairChanges}/>}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="flex flex-col gap-8">
@@ -81,7 +81,7 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
 
         <div className="flex flex-col gap-8">
           <Section title="Video">
-            {videos.length > 0 ? videos.map((video) => <video key={video.id} src={`/artifacts/${video.id}`} controls className="w-full rounded-lg border bg-black" />) : <Empty>No video recorded.</Empty>}
+            {videos.length > 0 ? videos.map((video) => <video key={video.id} src={`/artifacts/${video.id}`} controls className="w-full rounded-lg border bg-black"/>) : <Empty>No video recorded.</Empty>}
           </Section>
           <Section title="Screenshots">
             {screenshots.length > 0 ? (
@@ -89,7 +89,7 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
                 {screenshots.map((shot) => (
                   <a key={shot.id} href={`/artifacts/${shot.id}`} target="_blank" rel="noreferrer">
                     {/* eslint-disable-next-line @next/next/no-img-element -- local artifact files, not optimizable images */}
-                    <img src={`/artifacts/${shot.id}`} alt={path.basename(shot.path)} className="w-full rounded-lg border" />
+                    <img src={`/artifacts/${shot.id}`} alt={path.basename(shot.path)} className="w-full rounded-lg border"/>
                   </a>
                 ))}
               </div>
@@ -97,7 +97,7 @@ async function TestDetail({ params }: { params: Promise<{ slug: string; id: stri
               <Empty>No screenshots.</Empty>
             )}
           </Section>
-          <Section title="Trace">{traces.length > 0 ? traces.map((trace) => <TraceLink key={trace.id} trace={trace} />) : <Empty>No trace recorded.</Empty>}</Section>
+          <Section title="Trace">{traces.length > 0 ? traces.map((trace) => <TraceLink key={trace.id} trace={trace}/>) : <Empty>No trace recorded.</Empty>}</Section>
         </div>
       </div>
 

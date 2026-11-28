@@ -23,7 +23,7 @@ export function Select({ className, children, ...props }: ComponentProps<"select
         {children}
       </select>
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" aria-hidden>
-        <path d="m4 6 4 4 4-4" />
+        <path d="m4 6 4 4 4-4"/>
       </svg>
     </div>
   );
@@ -32,7 +32,7 @@ export function Select({ className, children, ...props }: ComponentProps<"select
 export function Choice({ name, value, title, detail, checked, defaultChecked, onChange }: ChoiceProps) {
   return (
     <label className="flex cursor-pointer gap-3 rounded-lg border p-3 hover:bg-hover has-checked:border-muted has-checked:bg-panel">
-      <input type="radio" name={name} value={value} checked={checked} defaultChecked={defaultChecked} onChange={onChange} className="mt-0.5 accent-foreground" />
+      <input type="radio" name={name} value={value} checked={checked} defaultChecked={defaultChecked} onChange={onChange} className="mt-0.5 accent-foreground"/>
       <span className="flex flex-col gap-0.5">
         <span className="text-sm font-medium">{title}</span>
         <span className="text-xs text-muted">{detail}</span>

@@ -104,6 +104,25 @@ const player = {
 }
 ```
 
+## Self-closing JSX tags
+
+No space before `/>` when a self-closing tag ends on the same line. ESLint enforces this
+(`react/jsx-tag-spacing`), and `pnpm exec eslint src --fix` corrects it.
+
+```tsx
+<RunStatusDot status={run.status}/>
+<input type="hidden" name="runId" value={runId}/>
+```
+
+Not:
+
+```tsx
+<RunStatusDot status={run.status} />
+```
+
+A tag whose attributes are split across lines keeps `/>` on its own line, lined up with the
+opening `<`.
+
 ## Comments
 
 Code should document itself through clear names and structure. Add a comment only when

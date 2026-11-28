@@ -80,7 +80,7 @@ export function RefCombobox({ id, name, branches, commits, compareBranch }: { id
                 >
                   {suggestion.kind === "branch" ? (
                     <>
-                      <BranchIcon />
+                      <BranchIcon/>
                       <span className="truncate">{suggestion.name}</span>
                     </>
                   ) : (

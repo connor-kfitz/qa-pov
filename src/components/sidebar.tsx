@@ -12,21 +12,21 @@ import { listNavProjects } from "@/lib/projects";
 export function Sidebar() {
   return (
     <aside className="relative flex shrink-0 flex-col border-b bg-sidebar md:sticky md:top-0 md:h-screen md:w-[var(--sidebar-width,16rem)] md:border-r md:border-b-0">
-      <SidebarResizer />
+      <SidebarResizer/>
       <div className="flex h-14 items-center px-5">
         <Link href="/" className="font-semibold tracking-tight">
           qa-pov
         </Link>
       </div>
       <nav className="flex gap-0.5 px-3 md:flex-col">
-        <Suspense fallback={<PrimaryLinks />}>
-          <PrimaryLinks highlight />
+        <Suspense fallback={<PrimaryLinks/>}>
+          <PrimaryLinks highlight/>
         </Suspense>
       </nav>
       <div className="mt-5 flex min-h-0 flex-col gap-1 pb-3 md:flex-1">
         <h2 className="px-5 text-xs font-semibold tracking-wider text-subtle uppercase">Projects</h2>
-        <Suspense fallback={<div className="mx-3 h-8 animate-pulse rounded-md bg-hover" />}>
-          <ProjectLinks />
+        <Suspense fallback={<div className="mx-3 h-8 animate-pulse rounded-md bg-hover"/>}>
+          <ProjectLinks/>
         </Suspense>
       </div>
     </aside>
@@ -34,8 +34,8 @@ export function Sidebar() {
 }
 
 const primaryLinks = [
-  { href: "/", label: "All projects", icon: <GridIcon />, exact: true },
-  { href: "/runs/new", label: "New run", icon: <PlusIcon />, exact: false }
+  { href: "/", label: "All projects", icon: <GridIcon/>, exact: true },
+  { href: "/runs/new", label: "New run", icon: <PlusIcon/>, exact: false }
 ];
 
 function PrimaryLinks({ highlight }: { highlight?: boolean }) {
@@ -76,14 +76,14 @@ async function ProjectLinks() {
       <nav className="flex gap-0.5 overflow-x-auto px-3 md:hidden">
         {projects.map((project) => (
           <NavLink key={project.slug} href={`/projects/${project.slug}`}>
-            <RunStatusDot status={project.status} />
+            <RunStatusDot status={project.status}/>
             <span className="truncate">{project.name}</span>
             {project.runCount > 0 && <span className="ml-auto pl-2 text-xs text-subtle tabular-nums">{project.runCount}</span>}
           </NavLink>
         ))}
       </nav>
       <nav className="hidden min-h-0 overflow-y-auto md:block">
-        <ProjectTree projects={projects} now={now} />
+        <ProjectTree projects={projects} now={now}/>
       </nav>
     </>
   );
@@ -92,10 +92,10 @@ async function ProjectLinks() {
 function GridIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4 shrink-0" aria-hidden>
-      <rect x="2" y="2" width="5" height="5" rx="1" />
-      <rect x="9" y="2" width="5" height="5" rx="1" />
-      <rect x="2" y="9" width="5" height="5" rx="1" />
-      <rect x="9" y="9" width="5" height="5" rx="1" />
+      <rect x="2" y="2" width="5" height="5" rx="1"/>
+      <rect x="9" y="2" width="5" height="5" rx="1"/>
+      <rect x="2" y="9" width="5" height="5" rx="1"/>
+      <rect x="9" y="9" width="5" height="5" rx="1"/>
     </svg>
   );
 }
@@ -103,7 +103,7 @@ function GridIcon() {
 function PlusIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-4 shrink-0" aria-hidden>
-      <path d="M8 3v10M3 8h10" />
+      <path d="M8 3v10M3 8h10"/>
     </svg>
   );
 }

@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full">
         <div className="flex min-h-screen flex-col md:flex-row">
-          <Sidebar />
+          <Sidebar/>
           <main className="min-w-0 flex-1 px-4 py-8 md:px-10">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">{children}</div>
           </main>

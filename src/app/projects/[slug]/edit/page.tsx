@@ -8,8 +8,8 @@ import { envIsSet, envValues } from "@/lib/env-file";
 
 export default function EditProjectPage({ params }: PageProps<"/projects/[slug]/edit">) {
   return (
-    <Suspense fallback={<Skeleton rows={6} />}>
-      <EditProject params={params} />
+    <Suspense fallback={<Skeleton rows={6}/>}>
+      <EditProject params={params}/>
     </Suspense>
   );
 }
@@ -34,7 +34,7 @@ async function EditProject({ params }: { params: Promise<{ slug: string }> }) {
         ]}
         description="Changes apply to future runs; past runs keep the settings they ran with. Saved passwords stay hidden; type over one to replace it."
       />
-      <ProjectForm project={{ config, envSet: envIsSet([...emailNames, ...secretNames]), emails: envValues(emailNames) }} />
+      <ProjectForm project={{ config, envSet: envIsSet([...emailNames, ...secretNames]), emails: envValues(emailNames) }}/>
     </>
   );
 }

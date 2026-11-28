@@ -17,8 +17,8 @@ export default function NewRunPage({ searchParams }: PageProps<"/runs/new">) {
         crumbs={[{ href: "/", label: "Projects" }]}
         description="Claude plans test cases, writes Playwright specs against the live env, runs them and reports back."
       />
-      <Suspense fallback={<Skeleton rows={6} />}>
-        <NewRunLoader searchParams={searchParams} />
+      <Suspense fallback={<Skeleton rows={6}/>}>
+        <NewRunLoader searchParams={searchParams}/>
       </Suspense>
     </>
   );
@@ -49,7 +49,7 @@ async function NewRunLoader({ searchParams }: { searchParams: PageProps<"/runs/n
           ({activeRun.app.name}) is in progress. A new run is queued and starts when it finishes.
         </p>
       )}
-      <NewRunForm apps={options} initialApp={typeof app === "string" ? app : undefined} />
+      <NewRunForm apps={options} initialApp={typeof app === "string" ? app : undefined}/>
     </>
   );
 }

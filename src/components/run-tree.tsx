@@ -14,21 +14,21 @@ export function RunTree({ slug, runs, now }: { slug: string; runs: ProjectRun[];
       {groupRuns(runs).map((group) => (
         <details key={group.key} open className="group/branch overflow-hidden rounded-lg border">
           <summary className="flex cursor-pointer list-none items-center gap-3 bg-panel px-4 py-3 select-none hover:bg-hover">
-            <Chevron className="group-open/branch:rotate-90" />
-            {group.kind === "feature" ? <BranchIcon /> : <StackIcon />}
+            <Chevron className="group-open/branch:rotate-90"/>
+            {group.kind === "feature" ? <BranchIcon/> : <StackIcon/>}
             <span className="min-w-0 flex-1 truncate font-medium">{group.label}</span>
             <span className="hidden text-xs text-muted sm:inline">
               {group.runs.length} {group.runs.length === 1 ? "run" : "runs"}
             </span>
-            <RunStatusBadge status={group.runs[0].run.status} />
+            <RunStatusBadge status={group.runs[0].run.status}/>
           </summary>
           <ul className="divide-y border-t">
             {group.runs.map(({ run, cases, costUsd }) => (
               <li key={run.id}>
                 <details open={run.id === latestRunId} className="group/run">
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 py-2.5 pr-4 pl-9 select-none hover:bg-hover">
-                    <Chevron className="group-open/run:rotate-90" />
-                    <RunStatusBadge status={run.status} />
+                    <Chevron className="group-open/run:rotate-90"/>
+                    <RunStatusBadge status={run.status}/>
                     <Link href={`/projects/${slug}/runs/${run.id}`} title={formatDateTime(run.createdAt)} className="text-sm font-medium hover:underline">
                       Run {shortId(run.id)}
                     </Link>
@@ -38,16 +38,16 @@ export function RunTree({ slug, runs, now }: { slug: string; runs: ProjectRun[];
                       {costUsd !== null && ` · ${formatCost(costUsd)}`}
                     </span>
                     <span className="ml-auto hidden md:flex">
-                      <CaseSummary counts={countByStatus(cases)} />
+                      <CaseSummary counts={countByStatus(cases)}/>
                     </span>
                   </summary>
                   <ul className="mb-2 ml-[3.35rem] border-l">
                     {cases.map((testCase) => (
                       <li key={testCase.id}>
                         <Link href={`/projects/${slug}/runs/${run.id}/tests/${testCase.id}`} className="flex items-center gap-3 py-1.5 pr-4 pl-4 text-sm hover:bg-hover">
-                          <CaseStatusBadge status={testCase.status} />
+                          <CaseStatusBadge status={testCase.status}/>
                           <span className="min-w-0 flex-1 truncate">{testCase.title}</span>
-                          {testCase.verdict && <VerdictBadge verdict={testCase.verdict} />}
+                          {testCase.verdict && <VerdictBadge verdict={testCase.verdict}/>}
                           <span className="hidden w-16 text-right text-xs text-muted sm:inline">{testCase.role}</span>
                         </Link>
                       </li>

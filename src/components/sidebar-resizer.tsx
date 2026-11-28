@@ -52,7 +52,7 @@ export function SidebarResizer() {
       onDoubleClick={() => setSidebarWidth(sidebarWidths.initial, true)}
       className="group absolute inset-y-0 -right-1 z-10 hidden w-2 cursor-col-resize touch-none outline-none md:block"
     >
-      <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-sky-500/60 group-focus-visible:bg-sky-500 group-active:bg-sky-500" />
+      <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-sky-500/60 group-focus-visible:bg-sky-500 group-active:bg-sky-500"/>
     </div>
   );
 }

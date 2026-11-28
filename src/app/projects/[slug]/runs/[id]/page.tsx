@@ -16,8 +16,8 @@ import type { App, ClaudeCall, Run, TestCase } from "@/types/shared.types";
 
 export default function RunPage({ params }: PageProps<"/projects/[slug]/runs/[id]">) {
   return (
-    <Suspense fallback={<Skeleton rows={6} />}>
-      <RunDetail params={params} />
+    <Suspense fallback={<Skeleton rows={6}/>}>
+      <RunDetail params={params}/>
     </Suspense>
   );
 }
@@ -49,17 +49,17 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         description={`${scenarioDetail(run)} · ${depthLabel(run.depth)}`}
         aside={
           <>
-            {active && <AutoRefresh />}
-            <RunStatusBadge status={run.status} />
+            {active && <AutoRefresh/>}
+            <RunStatusBadge status={run.status}/>
           </>
         }
       />
 
       <div className={`${panelClass} p-4`}>
-        <RunSteps run={run} costs={costByStep(calls)} />
+        <RunSteps run={run} costs={costByStep(calls)}/>
       </div>
 
-      <RunAlerts run={run} activeRun={activeRun} />
+      <RunAlerts run={run} activeRun={activeRun}/>
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-4">
         <Fact label="Env">
@@ -79,17 +79,17 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         <Fact label="Duration">{runDuration(run, now) ?? "—"}</Fact>
         <Fact label="Claude cost">{calls.length > 0 ? <span className="tabular-nums">{formatCost(totalCost(calls))}</span> : "—"}</Fact>
         <Fact label="Results">
-          <CaseSummary counts={countByStatus(cases)} />
+          <CaseSummary counts={countByStatus(cases)}/>
         </Fact>
       </dl>
 
       <Section title={`Test cases (${cases.length})`}>
-        <CasesTable run={run} slug={app.slug} cases={cases} />
+        <CasesTable run={run} slug={app.slug} cases={cases}/>
       </Section>
 
       {calls.length > 0 && (
         <Section title={`Claude calls (${calls.length})`}>
-          <ClaudeCallsTable calls={calls} />
+          <ClaudeCallsTable calls={calls}/>
         </Section>
       )}
 
@@ -113,7 +113,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
 function RunAlerts({ run, activeRun }: { run: Run; activeRun: { run: Run; app: App } | null }) {
   const stoppedAt = failedStep(run);
   const retryFrom = retrySteps(run);
-  const retry = retryFrom.length > 0 && <RetryRunForm runId={run.id} steps={retryFrom} />;
+  const retry = retryFrom.length > 0 && <RetryRunForm runId={run.id} steps={retryFrom}/>;
 
   return (
     <>
@@ -173,7 +173,7 @@ function CasesTable({ run, slug, cases }: { run: Run; slug: string; cases: TestC
           {cases.map((testCase) => (
             <tr key={testCase.id} className="relative hover:bg-hover">
               <td className="px-4 py-3 align-top">
-                <CaseStatusBadge status={testCase.status} />
+                <CaseStatusBadge status={testCase.status}/>
               </td>
               <td className="px-4 py-3 align-top">
                 <Link href={`/projects/${slug}/runs/${run.id}/tests/${testCase.id}`} className="font-medium after:absolute after:inset-0">
@@ -182,7 +182,7 @@ function CasesTable({ run, slug, cases }: { run: Run; slug: string; cases: TestC
                 {testCase.kind === "edge" && <span className="ml-2 text-xs text-muted">edge case</span>}
               </td>
               <td className="px-4 py-3 align-top text-muted">{testCase.role}</td>
-              <td className="px-4 py-3 align-top">{testCase.verdict ? <VerdictBadge verdict={testCase.verdict} /> : <span className="text-subtle">—</span>}</td>
+              <td className="px-4 py-3 align-top">{testCase.verdict ? <VerdictBadge verdict={testCase.verdict}/> : <span className="text-subtle">—</span>}</td>
               <td className="px-4 py-3 text-right align-top text-muted tabular-nums">{testCase.durationMs !== null ? formatDuration(testCase.durationMs) : "—"}</td>
             </tr>
           ))}

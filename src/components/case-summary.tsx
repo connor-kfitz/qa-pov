@@ -17,7 +17,7 @@ export function CaseSummary({ counts }: { counts: CaseCounts }) {
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       {parts.map(([status, dot]) => (
         <span key={status} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span className={`size-1.5 rounded-full ${dot}`} />
+          <span className={`size-1.5 rounded-full ${dot}`}/>
           <span className="tabular-nums">{counts[status]}</span>
           <span className="text-muted">{status}</span>
         </span>

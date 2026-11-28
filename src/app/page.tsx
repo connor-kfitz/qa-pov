@@ -19,8 +19,8 @@ export default function ProjectsPage() {
           </Link>
         }
       />
-      <Suspense fallback={<Skeleton rows={3} />}>
-        <ProjectGrid />
+      <Suspense fallback={<Skeleton rows={3}/>}>
+        <ProjectGrid/>
       </Suspense>
     </>
   );
@@ -61,7 +61,7 @@ async function ProjectGrid() {
             <div className="flex flex-col gap-1.5 text-sm">
               <span className="text-xs text-subtle">Latest run · {formatRelative(project.latestRun.createdAt, now)}</span>
               <span className="flex min-w-0 items-center gap-2">
-                <RunStatusBadge status={project.latestRun.status} />
+                <RunStatusBadge status={project.latestRun.status}/>
                 <span className="truncate">{scenarioTitle(project.latestRun)}</span>
               </span>
             </div>

@@ -11,8 +11,8 @@ import { isActive } from "@/lib/helpers";
 
 export default function ProjectPage({ params }: PageProps<"/projects/[slug]">) {
   return (
-    <Suspense fallback={<Skeleton rows={6} />}>
-      <ProjectDetail params={params} />
+    <Suspense fallback={<Skeleton rows={6}/>}>
+      <ProjectDetail params={params}/>
     </Suspense>
   );
 }
@@ -47,7 +47,7 @@ async function ProjectDetail({ params }: { params: Promise<{ slug: string }> }) 
         }
         aside={
           <>
-            {runs.some(({ run }) => isActive(run.status)) && <AutoRefresh />}
+            {runs.some(({ run }) => isActive(run.status)) && <AutoRefresh/>}
             {project.configured && (
               <>
                 <Link href={`/projects/${project.slug}/edit`} className={secondaryButtonClass}>
@@ -64,7 +64,7 @@ async function ProjectDetail({ params }: { params: Promise<{ slug: string }> }) 
 
       <Section title={`Runs (${runs.length})`}>
         {runs.length > 0 ? (
-          <RunTree slug={project.slug} runs={runs} now={now} />
+          <RunTree slug={project.slug} runs={runs} now={now}/>
         ) : (
           <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted">No runs yet for this project.</p>
         )}

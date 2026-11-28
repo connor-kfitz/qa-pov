@@ -26,9 +26,9 @@ export function ProjectTree({ projects, now }: { projects: NavProject[]; now: nu
         return (
           <li key={project.slug}>
             <div className="flex items-center gap-0.5">
-              <Toggle open={open} label={project.name} disabled={project.branches.length === 0} onToggle={() => setNodeOpen(key, !open)} />
+              <Toggle open={open} label={project.name} disabled={project.branches.length === 0} onToggle={() => setNodeOpen(key, !open)}/>
               <Link href={`/projects/${project.slug}`} aria-current={active ? "page" : undefined} className={`${navLinkClass(active)} flex-1 pl-1.5`}>
-                <RunStatusDot status={project.status} />
+                <RunStatusDot status={project.status}/>
                 <span className="truncate">{project.name}</span>
                 {project.runCount > 0 && <span className="ml-auto pl-2 text-xs text-subtle tabular-nums">{project.runCount}</span>}
               </Link>
@@ -36,7 +36,7 @@ export function ProjectTree({ projects, now }: { projects: NavProject[]; now: nu
             {open && project.branches.length > 0 && (
               <Children>
                 {project.branches.map((branch) => (
-                  <BranchNode key={branch.name} slug={project.slug} branch={branch} location={location} stored={stored} now={now} />
+                  <BranchNode key={branch.name} slug={project.slug} branch={branch} location={location} stored={stored} now={now}/>
                 ))}
               </Children>
             )}
@@ -54,7 +54,7 @@ function BranchNode({ slug, branch, location, stored, now }: { slug: string; bra
 
   return (
     <li>
-      <FolderRow open={open} title={`Branch ${branch.name}: entire-branch runs and the features run against it`} icon={<StackIcon />} label={branch.name} count={branch.runCount} current={holdsCurrent} onToggle={() => setNodeOpen(key, !open)} />
+      <FolderRow open={open} title={`Branch ${branch.name}: entire-branch runs and the features run against it`} icon={<StackIcon/>} label={branch.name} count={branch.runCount} current={holdsCurrent} onToggle={() => setNodeOpen(key, !open)}/>
       {open && (
         <Children>
           {branch.features.map((feature) => {
@@ -66,7 +66,7 @@ function BranchNode({ slug, branch, location, stored, now }: { slug: string; bra
                 <FolderRow
                   open={featureOpen}
                   title={`Feature ${feature.name}, run against ${branch.name}`}
-                  icon={<BranchIcon />}
+                  icon={<BranchIcon/>}
                   label={feature.name}
                   count={feature.runs.length}
                   current={featureHoldsCurrent}
@@ -74,13 +74,13 @@ function BranchNode({ slug, branch, location, stored, now }: { slug: string; bra
                 />
                 {featureOpen && (
                   <Children>
-                    <RunRows slug={slug} runs={feature.runs} location={location} now={now} />
+                    <RunRows slug={slug} runs={feature.runs} location={location} now={now}/>
                   </Children>
                 )}
               </li>
             );
           })}
-          <RunRows slug={slug} runs={branch.runs} location={location} now={now} title="Entire-branch run" />
+          <RunRows slug={slug} runs={branch.runs} location={location} now={now} title="Entire-branch run"/>
         </Children>
       )}
     </li>
@@ -97,7 +97,7 @@ function RunRows({ slug, runs, location, now, title }: { slug: string; runs: Nav
         return (
           <li key={run.id}>
             <Link href={`/projects/${slug}/runs/${run.id}`} title={title} aria-current={active ? "page" : undefined} className={`${navLinkClass(active)} pl-2`}>
-              <RunStatusDot status={run.status} />
+              <RunStatusDot status={run.status}/>
               <span className="font-mono text-xs">{shortId(run.id)}</span>
               <span className="ml-auto pl-2 text-xs text-subtle">{formatRelative(run.createdAt, now)}</span>
             </Link>
@@ -118,7 +118,7 @@ function RunRows({ slug, runs, location, now, title }: { slug: string; runs: Nav
 function FolderRow({ open, title, icon, label, count, current, onToggle }: { open: boolean; title: string; icon: ReactNode; label: string; count: number; current: boolean; onToggle: () => void }) {
   return (
     <button type="button" aria-expanded={open} onClick={onToggle} title={title} className={`${navLinkClass(false)} w-full gap-2 pl-1.5 text-left`}>
-      <Chevron className={open ? "rotate-90" : ""} />
+      <Chevron className={open ? "rotate-90" : ""}/>
       {icon}
       <span className={`truncate ${current ? "text-foreground" : ""}`}>{label}</span>
       <span className="ml-auto pl-2 text-xs text-subtle tabular-nums">{count}</span>
@@ -140,7 +140,7 @@ function Toggle({ open, label, disabled, onToggle }: { open: boolean; label: str
       onClick={onToggle}
       className="flex size-6 shrink-0 items-center justify-center rounded hover:bg-hover disabled:invisible"
     >
-      <Chevron className={open ? "rotate-90" : ""} />
+      <Chevron className={open ? "rotate-90" : ""}/>
     </button>
   );
 }
