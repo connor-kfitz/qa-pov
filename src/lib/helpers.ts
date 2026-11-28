@@ -1,16 +1,26 @@
 import { caseStatusEnum } from "@/db/schema";
 import type { ZodType } from "zod";
 import { testPlanSchema } from "@/lib/plan-schema";
-import type { ProjectRun, RunGroup, StepState } from "@/types/dashboard.types";
+import type { ProjectRun, RunGroup, StepCosts, StepState } from "@/types/dashboard.types";
 import type { PlanParseResult, PlaywrightReport, ReportSuite, ReportedTest } from "@/types/runner.types";
-import type { CaseCounts, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
+import type { CaseCounts, ClaudeCall, Depth, Run, RunStatus, TestCase } from "@/types/shared.types";
 
 export const runSteps = ["preparing", "planning", "writing", "running", "repairing", "saving"] as const satisfies RunStatus[];
+
+const stepLabels: Record<(typeof runSteps)[number], string> = {
+  preparing: "Prepare",
+  planning: "Plan",
+  writing: "Write",
+  running: "Run",
+  repairing: "Repair",
+  saving: "Save"
+}
 
 const activeStatuses: RunStatus[] = ["queued", ...runSteps];
 
 const relativeFormat = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const dateTimeFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
+const usdFormat = new Intl.NumberFormat("en-CA", { style: "currency", currency: "USD" });
 
 const relativeUnits: [Intl.RelativeTimeFormatUnit, number][] = [
   ["day", 86_400_000],
@@ -30,6 +40,30 @@ export function countByStatus(cases: TestCase[]) {
   const counts = emptyCounts();
   for (const testCase of cases) counts[testCase.status] += 1;
   return counts;
+}
+
+export function stepLabel(step: RunStatus) {
+  const known = runSteps.find((runStep) => runStep === step);
+  return known ? stepLabels[known] : step;
+}
+
+export function totalCost(calls: ClaudeCall[]) {
+  return calls.reduce((sum, call) => sum + (call.costUsd ?? 0), 0);
+}
+
+export function costByStep(calls: ClaudeCall[]) {
+  const costs: StepCosts = {};
+  for (const call of calls) costs[call.step] = (costs[call.step] ?? 0) + (call.costUsd ?? 0);
+  return costs;
+}
+
+export function pluralize(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+export function formatCost(usd: number) {
+  if (usd > 0 && usd < 0.01) return `<${usdFormat.format(0.01)}`;
+  return usdFormat.format(usd);
 }
 
 export function failedStep(run: Run) {
@@ -149,10 +183,6 @@ export function roleEnvNames(slug: string, role: string) {
 
 export function bypassSecretEnvName(slug: string) {
   return envName(slug, "bypass_secret");
-}
-
-export function escapeHtml(text: string) {
-  return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
 export function navLinkClass(active: boolean) {

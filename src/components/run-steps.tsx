@@ -1,15 +1,6 @@
-import { runSteps, stepStates } from "@/lib/helpers";
-import type { StepState } from "@/types/dashboard.types";
+import { formatCost, runSteps, stepLabel, stepStates } from "@/lib/helpers";
+import type { StepCosts, StepState } from "@/types/dashboard.types";
 import type { Run } from "@/types/shared.types";
-
-const stepLabels: Record<(typeof runSteps)[number], string> = {
-  preparing: "Prepare",
-  planning: "Plan",
-  writing: "Write",
-  running: "Run",
-  repairing: "Repair",
-  saving: "Save"
-}
 
 const stateClasses: Record<StepState, { dot: string; text: string }> = {
   done: { dot: "bg-emerald-500 ring-emerald-500", text: "text-foreground" },
@@ -19,7 +10,7 @@ const stateClasses: Record<StepState, { dot: string; text: string }> = {
   pending: { dot: "bg-transparent ring-line", text: "text-subtle" }
 }
 
-export function RunSteps({ run }: { run: Run }) {
+export function RunSteps({ run, costs = {} }: { run: Run; costs?: StepCosts }) {
   const states = stepStates(run);
 
   return (
@@ -30,7 +21,10 @@ export function RunSteps({ run }: { run: Run }) {
             <span className={`size-2.5 shrink-0 rounded-full ring-2 ring-inset ${stateClasses[states[i]].dot}`} />
             {i < runSteps.length - 1 && <span className={`h-px flex-1 ${states[i] === "done" ? "bg-emerald-500/50" : "bg-line"}`} />}
           </div>
-          <span className={`text-sm ${stateClasses[states[i]].text}`}>{stepLabels[step]}</span>
+          <div className="flex flex-col">
+            <span className={`text-sm ${stateClasses[states[i]].text}`}>{stepLabel(step)}</span>
+            {costs[step] !== undefined && <span className="text-xs text-muted tabular-nums">{formatCost(costs[step])}</span>}
+          </div>
         </li>
       ))}
     </ol>

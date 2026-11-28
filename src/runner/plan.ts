@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { parsePlan } from "@/lib/helpers";
-import { runClaude } from "@/runner/claude";
+import { askClaude } from "@/runner/claude";
 import { buildPlanPrompt, buildPlanRetryPrompt } from "@/runner/prompts";
 import type { RunContext, StepInput } from "@/types/runner.types";
 
@@ -19,7 +19,7 @@ export async function plan({ run, app, runDir }: StepInput, context: RunContext)
 
   const ask = async (prompt: string, attempt: number) => {
     await writeFile(path.join(planDir, `prompt-${attempt}.md`), prompt);
-    const result = await runClaude(prompt, { cwd: context.codeDir, tools: ["Read", "Glob", "Grep"], timeoutMs: planTimeoutMs });
+    const result = await askClaude({ runId: run.id, step: "planning", label: `Attempt ${attempt}` }, prompt, { cwd: context.codeDir, tools: ["Read", "Glob", "Grep"], timeoutMs: planTimeoutMs });
     await writeFile(path.join(planDir, `answer-${attempt}.md`), result.text);
     console.log(`Plan attempt ${attempt}: ${Math.round((result.durationMs ?? 0) / 1000)}s, $${(result.costUsd ?? 0).toFixed(2)}`);
     return parsePlan(result.text, roles, run.depth);

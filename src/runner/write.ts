@@ -4,10 +4,10 @@ import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { parseAnswer, slugify } from "@/lib/helpers";
+import { parseAnswer, pluralize, slugify } from "@/lib/helpers";
 import { writeReportSchema } from "@/lib/plan-schema";
 import { toRunRelativePath } from "@/lib/run-files";
-import { runClaude } from "@/runner/claude";
+import { askClaude } from "@/runner/claude";
 import { runPlaywright } from "@/runner/playwright";
 import { buildWritePrompt } from "@/runner/prompts";
 import { fixtureImport, runnerEnv, sessionAllowedTools, sessionTools, verifyCommand, writeBrowserConfig } from "@/runner/session";
@@ -47,7 +47,7 @@ export async function write({ run, app, runDir }: StepInput, context: RunContext
     await writeFile(path.join(writeDir, `prompt-${role}.md`), prompt);
 
     console.log(`Writing ${group.length} ${role} tests`);
-    const result = await runClaude(prompt, {
+    const result = await askClaude({ runId: run.id, step: "writing", label: `${role}: ${pluralize(group.length, "test")}` }, prompt, {
       cwd: testsDir,
       tools: sessionTools,
       allowedTools: sessionAllowedTools,

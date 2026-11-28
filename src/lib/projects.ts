@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { count, desc, eq, inArray, sum } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { listAppConfigs, loadAppConfig } from "@/lib/app-config";
 import type { Project, ProjectRun } from "@/types/dashboard.types";
@@ -48,16 +48,19 @@ export async function listProjectRuns(appId: string): Promise<ProjectRun[]> {
   const runs = await db.select().from(schema.runs).where(eq(schema.runs.appId, appId)).orderBy(desc(schema.runs.createdAt));
   if (runs.length === 0) return [];
 
-  const cases = await db
-    .select()
-    .from(schema.testCases)
-    .where(
-      inArray(
-        schema.testCases.runId,
-        runs.map((run) => run.id)
-      )
-    )
-    .orderBy(schema.testCases.createdAt, schema.testCases.title);
+  const runIds = runs.map((run) => run.id);
+  const [cases, costs] = await Promise.all([
+    db.select().from(schema.testCases).where(inArray(schema.testCases.runId, runIds)).orderBy(schema.testCases.createdAt, schema.testCases.title),
+    db
+      .select({ runId: schema.claudeCalls.runId, total: sum(schema.claudeCalls.costUsd).mapWith(Number) })
+      .from(schema.claudeCalls)
+      .where(inArray(schema.claudeCalls.runId, runIds))
+      .groupBy(schema.claudeCalls.runId)
+  ]);
 
-  return runs.map((run) => ({ run, cases: cases.filter((testCase) => testCase.runId === run.id) }));
+  return runs.map((run) => ({
+    run,
+    cases: cases.filter((testCase) => testCase.runId === run.id),
+    costUsd: costs.find((row) => row.runId === run.id)?.total ?? null
+  }));
 }

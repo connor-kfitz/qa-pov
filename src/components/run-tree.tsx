@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CaseSummary } from "@/components/case-summary";
 import { CaseStatusBadge, RunStatusBadge, VerdictBadge } from "@/components/status-badge";
-import { countByStatus, depthLabel, emptyRunMessage, formatDateTime, formatRelative, groupRuns, runDuration, shortId } from "@/lib/helpers";
+import { countByStatus, depthLabel, emptyRunMessage, formatCost, formatDateTime, formatRelative, groupRuns, runDuration, shortId } from "@/lib/helpers";
 import type { ProjectRun } from "@/types/dashboard.types";
 
 export function RunTree({ slug, runs, now }: { slug: string; runs: ProjectRun[]; now: number }) {
@@ -22,7 +22,7 @@ export function RunTree({ slug, runs, now }: { slug: string; runs: ProjectRun[];
             <RunStatusBadge status={group.runs[0].run.status} />
           </summary>
           <ul className="divide-y border-t">
-            {group.runs.map(({ run, cases }) => (
+            {group.runs.map(({ run, cases, costUsd }) => (
               <li key={run.id}>
                 <details open={run.id === latestRunId} className="group/run">
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 py-2.5 pr-4 pl-9 select-none hover:bg-hover">
@@ -34,6 +34,7 @@ export function RunTree({ slug, runs, now }: { slug: string; runs: ProjectRun[];
                     <span className="text-xs text-muted">
                       {formatRelative(run.createdAt, now)} · {depthLabel(run.depth)}
                       {runDuration(run, now) && ` · ${runDuration(run, now)}`}
+                      {costUsd !== null && ` · ${formatCost(costUsd)}`}
                     </span>
                     <span className="ml-auto hidden md:flex">
                       <CaseSummary counts={countByStatus(cases)} />

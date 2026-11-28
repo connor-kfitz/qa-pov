@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const scenarioEnum = pgEnum("scenario", ["codebase", "feature"]);
 export const depthEnum = pgEnum("depth", ["base", "base_edge"]);
@@ -51,6 +51,18 @@ export const testCases = pgTable("test_cases", {
   verdict: verdictEnum("verdict"),
   notes: text("notes"),
   durationMs: integer("duration_ms"),
+  createdAt: createdAt()
+});
+
+export const claudeCalls = pgTable("claude_calls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  runId: uuid("run_id").notNull().references(() => runs.id, { onDelete: "cascade" }),
+  step: runStatusEnum("step").notNull(),
+  label: text("label").notNull(),
+  ok: boolean("ok").notNull(),
+  costUsd: doublePrecision("cost_usd"),
+  durationMs: integer("duration_ms"),
+  turns: integer("turns"),
   createdAt: createdAt()
 });
 

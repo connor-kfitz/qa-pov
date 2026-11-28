@@ -12,7 +12,7 @@ never in the component, module or script that uses it. Import them with `import 
 | File | What goes in it |
 |---|---|
 | `shared.types.ts` | Domain types used by both the dashboard and the runner: DB row types and enums (from `src/db/schema.ts`), app config (from the Zod schema in `src/lib/app-config.ts`) |
-| `dashboard.types.ts` | Dashboard types: component props, form state, view models (`Project`, `ProjectRun`), seed data |
+| `dashboard.types.ts` | Dashboard types: component props, form state, view models (`Project`, `ProjectRun`) |
 | `runner.types.ts` | Runner types: Claude call options/results, test plan and repair verdict |
 
 Add to an existing file first. Only start a new `*.types.ts` file when a new area

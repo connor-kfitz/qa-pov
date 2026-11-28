@@ -32,6 +32,10 @@ export function listCases(runId: string) {
   return db.select().from(schema.testCases).where(eq(schema.testCases.runId, runId)).orderBy(asc(schema.testCases.createdAt), asc(schema.testCases.title));
 }
 
+export function listClaudeCalls(runId: string) {
+  return db.select().from(schema.claudeCalls).where(eq(schema.claudeCalls.runId, runId)).orderBy(asc(schema.claudeCalls.createdAt));
+}
+
 export async function getCase(runId: string, caseId: string) {
   if (!idSchema.safeParse(caseId).success) return null;
   const [testCase] = await db.select().from(schema.testCases).where(eq(schema.testCases.id, caseId));

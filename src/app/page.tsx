@@ -42,8 +42,8 @@ async function ProjectGrid() {
         <p className="mt-1">
           <Link href="/projects/new" className="underline underline-offset-2 hover:text-foreground">
             Add a project
-          </Link>
-          , or load demo data with <code className="font-mono">pnpm db:seed</code>.
+          </Link>{" "}
+          to start your first run.
         </p>
       </div>
     );

@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { plannedCaseSchema, playwrightReportSchema, repairReportSchema, repairVerdictSchema, reportSpecSchema, testPlanSchema, writeReportSchema } from "@/lib/plan-schema";
-import type { AppConfig, Run, Scenario } from "@/types/shared.types";
+import type { AppConfig, Run, RunStatus, Scenario } from "@/types/shared.types";
 
 export interface ClaudeOptions {
   cwd?: string;
@@ -13,10 +13,20 @@ export interface ClaudeOptions {
   timeoutMs?: number;
 }
 
-export interface ClaudeResult {
-  text: string;
+export interface ClaudeUsage {
   costUsd?: number;
   durationMs?: number;
+  turns?: number;
+}
+
+export interface ClaudeResult extends ClaudeUsage {
+  text: string;
+}
+
+export interface ClaudeCallTag {
+  runId: string;
+  step: RunStatus;
+  label: string;
 }
 
 export type PlannedCase = z.infer<typeof plannedCaseSchema>;

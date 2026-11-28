@@ -8,10 +8,10 @@ import { CaseSummary } from "@/components/case-summary";
 import { PageHeader, Section, Skeleton, panelClass } from "@/components/page-header";
 import { RunSteps } from "@/components/run-steps";
 import { CaseStatusBadge, RunStatusBadge, VerdictBadge } from "@/components/status-badge";
-import { countByStatus, deployedCommitLabel, depthLabel, failedStep, formatDateTime, formatDuration, isActive, runDuration, scenarioDetail, scenarioTitle, shortId, shortSha, stripStepPrefix } from "@/lib/helpers";
+import { costByStep, countByStatus, deployedCommitLabel, depthLabel, failedStep, formatCost, formatDateTime, formatDuration, isActive, runDuration, scenarioDetail, scenarioTitle, shortId, shortSha, stepLabel, stripStepPrefix, totalCost } from "@/lib/helpers";
 import { readRunLog } from "@/lib/run-files";
-import { getRun, listCases } from "@/lib/runs";
-import type { Run, TestCase } from "@/types/shared.types";
+import { getRun, listCases, listClaudeCalls } from "@/lib/runs";
+import type { ClaudeCall, Run, TestCase } from "@/types/shared.types";
 
 export default function RunPage({ params }: PageProps<"/projects/[slug]/runs/[id]">) {
   return (
@@ -24,8 +24,8 @@ export default function RunPage({ params }: PageProps<"/projects/[slug]/runs/[id
 async function loadRun(slug: string, id: string) {
   const found = await getRun(id);
   if (!found || found.app.slug !== slug) return null;
-  const [cases, log] = await Promise.all([listCases(id), readRunLog(id)]);
-  return { ...found, cases, log, now: Date.now() };
+  const [cases, calls, log] = await Promise.all([listCases(id), listClaudeCalls(id), readRunLog(id)]);
+  return { ...found, cases, calls, log, now: Date.now() };
 }
 
 async function RunDetail({ params }: { params: Promise<{ slug: string; id: string }> }) {
@@ -34,7 +34,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
   const loaded = await loadRun(slug, id);
   if (!loaded) notFound();
 
-  const { run, app, cases, log, now } = loaded;
+  const { run, app, cases, calls, log, now } = loaded;
   const active = isActive(run.status);
 
   return (
@@ -55,7 +55,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
       />
 
       <div className={`${panelClass} p-4`}>
-        <RunSteps run={run} />
+        <RunSteps run={run} costs={costByStep(calls)} />
       </div>
 
       <RunAlerts run={run} />
@@ -76,6 +76,7 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
         <Fact label="Created">{formatDateTime(run.createdAt)}</Fact>
         <Fact label="Started">{run.startedAt ? formatDateTime(run.startedAt) : "—"}</Fact>
         <Fact label="Duration">{runDuration(run, now) ?? "—"}</Fact>
+        <Fact label="Claude cost">{calls.length > 0 ? <span className="tabular-nums">{formatCost(totalCost(calls))}</span> : "—"}</Fact>
         <Fact label="Results">
           <CaseSummary counts={countByStatus(cases)} />
         </Fact>
@@ -84,6 +85,12 @@ async function RunDetail({ params }: { params: Promise<{ slug: string; id: strin
       <Section title={`Test cases (${cases.length})`}>
         <CasesTable run={run} slug={app.slug} cases={cases} />
       </Section>
+
+      {calls.length > 0 && (
+        <Section title={`Claude calls (${calls.length})`}>
+          <ClaudeCallsTable calls={calls} />
+        </Section>
+      )}
 
       <Section title="Runner log">
         {log === null ? (
@@ -162,6 +169,46 @@ function CasesTable({ run, slug, cases }: { run: Run; slug: string; cases: TestC
             </tr>
           ))}
         </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClaudeCallsTable({ calls }: { calls: ClaudeCall[] }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <table className="w-full min-w-[520px] text-left text-sm">
+        <thead className="border-b bg-panel text-xs text-muted">
+          <tr>
+            <th className="px-4 py-2.5 font-medium">Step</th>
+            <th className="px-4 py-2.5 font-medium">Call</th>
+            <th className="px-4 py-2.5 text-right font-medium">Turns</th>
+            <th className="px-4 py-2.5 text-right font-medium">Duration</th>
+            <th className="px-4 py-2.5 text-right font-medium">Cost</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {calls.map((call) => (
+            <tr key={call.id}>
+              <td className="px-4 py-3 text-muted">{stepLabel(call.step)}</td>
+              <td className="px-4 py-3">
+                {call.label}
+                {!call.ok && <span className="ml-2 text-xs font-medium text-red-700 dark:text-red-300">failed</span>}
+              </td>
+              <td className="px-4 py-3 text-right text-muted tabular-nums">{call.turns ?? "—"}</td>
+              <td className="px-4 py-3 text-right text-muted tabular-nums">{call.durationMs !== null ? formatDuration(call.durationMs) : "—"}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{call.costUsd !== null ? formatCost(call.costUsd) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="border-t bg-panel">
+          <tr>
+            <td colSpan={4} className="px-4 py-2.5 text-xs font-medium text-muted">
+              Total
+            </td>
+            <td className="px-4 py-2.5 text-right font-medium tabular-nums">{formatCost(totalCost(calls))}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   );

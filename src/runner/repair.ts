@@ -4,10 +4,10 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { diffFiles } from "@/lib/git";
-import { flattenReport, parseAnswer, toPosix, truncate } from "@/lib/helpers";
+import { flattenReport, parseAnswer, pluralize, toPosix, truncate } from "@/lib/helpers";
 import { playwrightReportSchema, repairReportSchema } from "@/lib/plan-schema";
 import { toRunRelativePath } from "@/lib/run-files";
-import { runClaude } from "@/runner/claude";
+import { askClaude } from "@/runner/claude";
 import { runPlaywright } from "@/runner/playwright";
 import { EnvProblemError } from "@/runner/prepare";
 import { buildRepairPrompt } from "@/runner/prompts";
@@ -64,7 +64,7 @@ export async function repair({ run, app, runDir }: StepInput) {
     await writeFile(path.join(repairDir, `prompt-${role}.md`), prompt);
 
     console.log(`Repairing ${group.length} failed ${role} tests`);
-    const result = await runClaude(prompt, {
+    const result = await askClaude({ runId: run.id, step: "repairing", label: `${role}: ${pluralize(group.length, "failed test")}` }, prompt, {
       cwd: testsDir,
       tools: sessionTools,
       allowedTools: sessionAllowedTools,
